@@ -61,9 +61,12 @@ R() { "$BIN" --config "$WORK/targets.yaml" "$@"; }
 
 # One IPMI round trip should take well under a second against a local simulator.
 t0=$(date +%s)
-RACKHANDS_IPMI_DEBUG=1 R power sim >"$WORK/ipmi-debug.log" 2>&1 || true
+RACKHANDS_IPMI_DEBUG=1 R power sim 2>&1 | while IFS= read -r l; do printf '%s %s\n' "$(date +%s.%N)" "$l"; done >"$WORK/ipmi-debug.log" || true
 t1=$(date +%s)
-if [ $((t1 - t0)) -gt 5 ]; then echo "SLOW IPMI round trip: $((t1 - t0))s"; grep -v '^\s*$' "$WORK/ipmi-debug.log" | tail -80; fi
+if [ $((t1 - t0)) -gt 5 ]; then
+  echo "SLOW IPMI round trip: $((t1 - t0))s; lines after a pause > 1s:"
+  awk 'NR>1 && $1-p>1 {print "---- pause " ($1-p) "s before line " NR; for(i=NR-12;i<NR;i++) print h[i%20]; print $0} {p=$1; h[NR%20]=$0}' "$WORK/ipmi-debug.log" | grep -v '^[0-9.]* *$' | head -120
+fi
 
 # --- reads, every vendor
 R --json inventory >"$WORK/inv.json" || fail "inventory over the whole fleet"
