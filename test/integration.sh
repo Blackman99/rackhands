@@ -111,5 +111,5 @@ expect "IPMI chassis power on" test "$(R --json power sim | jq -r '.[0].data')" 
 expect "audit log records plan + execution" test "$(grep -c '"phase":"executed"' "$WORK/audit.jsonl")" -ge 4
 
 # --- MCP over stdio
-python3 test/mcp_smoke.py "$BIN" "$WORK/targets.yaml"
+timeout 400 python3 -u test/mcp_smoke.py "$BIN" "$WORK/targets.yaml" || fail "MCP smoke test"
 echo "integration: $pass checks passed"

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Drive `rackhands mcp` over stdio like an agent would (JSON-RPC, one
 message per line) and check the two-step confirmation end to end."""
-import json, subprocess, sys
+import json, queue, subprocess, sys, threading, time
 
 binary, config = sys.argv[1], sys.argv[2]
 
@@ -9,6 +9,8 @@ binary, config = sys.argv[1], sys.argv[2]
 class Session:
     def __init__(self, *extra):
         self.p = subprocess.Popen([binary, "--config", config, *extra, "mcp"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        self.q = queue.Queue()
+        threading.Thread(target=lambda: [self.q.put(l) for l in self.p.stdout], daemon=True).start()
         self.n = 0
         self.rpc("initialize", {"protocolVersion": "2025-06-18", "capabilities": {}, "clientInfo": {"name": "ci", "version": "0"}})
         self.send({"jsonrpc": "2.0", "method": "notifications/initialized"})
@@ -20,8 +22,14 @@ class Session:
     def rpc(self, method, params):
         self.n += 1
         self.send({"jsonrpc": "2.0", "id": self.n, "method": method, "params": params})
+        deadline = time.time() + 120
         while True:
-            msg = json.loads(self.p.stdout.readline())
+            try:
+                line = self.q.get(timeout=max(0.1, deadline - time.time()))
+            except queue.Empty:
+                self.p.kill()
+                raise SystemExit(f"FAIL {method} {json.dumps(params)[:200]}: no answer from the MCP server within 120s")
+            msg = json.loads(line)
             if msg.get("id") == self.n:
                 if "error" in msg:
                     raise SystemExit(f"{method}: {msg['error']}")
@@ -37,7 +45,7 @@ class Session:
 
 
 def check(cond, what):
-    print(("ok   " if cond else "FAIL ") + what)
+    print(("ok   " if cond else "FAIL ") + what, flush=True)
     if not cond:
         sys.exit(1)
 

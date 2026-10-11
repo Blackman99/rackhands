@@ -93,10 +93,39 @@ func (a *App) one(ctx context.Context, t *config.Target, fn func(context.Context
 		r.Error = err.Error()
 		return r
 	}
-	defer c.Close(context.Background())
-	tctx, cancel := context.WithTimeout(ctx, 3*t.TimeoutDur())
+	limit := 3 * t.TimeoutDur()
+	tctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
-	data, via, err := fn(tctx, c)
+	type res struct {
+		data any
+		via  bmc.Via
+		err  error
+	}
+	ch := make(chan res, 1)
+	go func() {
+		d, v, err := fn(tctx, c)
+		ch <- res{d, v, err}
+	}()
+	var got res
+	select {
+	case got = <-ch:
+		cctx, ccancel := context.WithTimeout(context.Background(), 5*time.Second)
+		c.Close(cctx)
+		ccancel()
+	case <-tctx.Done():
+		// A BMC (or a library talking to it) that ignores the deadline must not
+		// hold up the rest of the fleet: report it and let the goroutine finish
+		// on its own.
+		go func() {
+			<-ch
+			cctx, ccancel := context.WithTimeout(context.Background(), 5*time.Second)
+			c.Close(cctx)
+			ccancel()
+		}()
+		r.Error = fmt.Sprintf("no answer within %s", limit)
+		return r
+	}
+	data, via, err := got.data, got.via, got.err
 	r.Via = via.Protocol
 	if via.Fallback != "" {
 		r.Via += " (fallback)"
@@ -119,7 +148,10 @@ type Danger struct {
 }
 
 func (d Danger) op(via string) safety.Op {
-	args := map[string]string{"via": via}
+	args := map[string]string{}
+	if via != "" {
+		args["via"] = via
+	}
 	for k, v := range d.Args {
 		args[k] = v
 	}
