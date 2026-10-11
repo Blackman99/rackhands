@@ -64,9 +64,10 @@ t0=$(date +%s)
 RACKHANDS_IPMI_DEBUG=1 R power sim 2>&1 | while IFS= read -r l; do printf '%s %s\n' "$(date +%s.%N)" "$l"; done >"$WORK/ipmi-debug.log" || true
 t1=$(date +%s)
 if [ $((t1 - t0)) -gt 5 ]; then
-  echo "SLOW IPMI round trip: $((t1 - t0))s; lines after a pause > 1s:"
+  echo "SLOW IPMI round trip: $((t1 - t0))s; lines after a pause > 1s:"; slow=1
   awk 'NR>1 && $1-p>1 {print "---- pause " ($1-p) "s before line " NR; for(i=NR-12;i<NR;i++) print h[i%20]; print $0} {p=$1; h[NR%20]=$0}' "$WORK/ipmi-debug.log" | grep -v '^[0-9.]* *$' | head -120
 fi
+[ -z "${slow:-}" ] && ok "IPMI session opens quickly (no cipher-suite probe stall)" || fail "IPMI round trip took $((t1 - t0))s"
 
 # --- reads, every vendor
 R --json inventory >"$WORK/inv.json" || fail "inventory over the whole fleet"

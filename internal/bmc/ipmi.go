@@ -55,6 +55,10 @@ func (b *IPMI) conn(ctx context.Context) (*client.Client, error) {
 		c.WithInterface(client.InterfaceLan)
 	} else {
 		c.WithInterface(client.InterfaceLanplus)
+		// Try the two suites virtually every BMC supports instead of asking
+		// with Get Channel Cipher Suites first: some BMCs (and some ipmi_sim
+		// builds) never answer that command, which costs 5 x timeout.
+		c.WithCipherSuiteID(types.CipherSuiteID17, types.CipherSuiteID3)
 	}
 	c.WithTimeout(b.timeout)
 	if os.Getenv("RACKHANDS_IPMI_DEBUG") != "" {
