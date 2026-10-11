@@ -15,7 +15,12 @@ trap cleanup EXIT
 [ -n "${KEEP:-}" ] && trap - EXIT
 pass=0
 ok() { echo "ok   $*"; pass=$((pass+1)); }
-fail() { echo "FAIL $*"; exit 1; }
+diag() {
+  echo "--- diagnostics"; for f in "$WORK"/*.log "$WORK"/ipmi/log; do [ -f "$f" ] && { echo "== $f"; tail -20 "$f"; }; done
+  [ -f "$WORK/inv.json" ] && { echo "== inv.json"; head -c 3000 "$WORK/inv.json"; }
+}
+fail() { echo "FAIL $*"; diag; exit 1; }
+trap 'rc=$?; [ $rc -ne 0 ] && diag' ERR
 expect() { local what=$1; shift; if "$@"; then ok "$what"; else fail "$what"; fi; }
 
 # --- Redfish mockup servers (DMTF reference implementation of a BMC)
@@ -36,7 +41,8 @@ export RACKHANDS_SIM_STATE="$SIM/power"
 for p in 8401 8402 8403 8404 8405; do
   for _ in $(seq 50); do curl -sf "http://127.0.0.1:$p/redfish/v1/" >/dev/null && break; sleep 0.2; done
 done
-sleep 1
+for _ in $(seq 50); do ipmitool -I lanplus -H 127.0.0.1 -p 9623 -U admin -P secret chassis power status >/dev/null 2>&1 && break; sleep 0.2; done
+ipmitool -I lanplus -H 127.0.0.1 -p 9623 -U admin -P secret chassis power status || fail "ipmi_sim did not come up"
 
 cat >"$WORK/targets.yaml" <<YAML
 defaults: {username: admin, password_env: BMC_PASSWORD}
@@ -54,7 +60,7 @@ export BMC_PASSWORD=secret
 R() { "$BIN" --config "$WORK/targets.yaml" "$@"; }
 
 # --- reads, every vendor
-R --json inventory >"$WORK/inv.json"
+R --json inventory >"$WORK/inv.json" || fail "inventory over the whole fleet"
 expect "vendor detection" test "$(jq -r '[.[] | .data.vendor] | join(",")' "$WORK/inv.json")" = "Dell,HPE,Lenovo,Supermicro,Generic,Supermicro,Supermicro"
 expect "DMTF mockup inventory" test "$(jq -r '.[] | select(.target=="dmtf") | .data.serial' "$WORK/inv.json")" = "437XR1138R2"
 expect "IPMI FRU inventory" test "$(jq -r '.[] | select(.target=="sim") | .data.model' "$WORK/inv.json")" = "SYS-1029P-SIM"
