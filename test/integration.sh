@@ -40,6 +40,7 @@ export RACKHANDS_SIM_STATE="$SIM/power"
 
 for p in 8401 8402 8403 8404 8405; do
   for _ in $(seq 50); do curl -sf "http://127.0.0.1:$p/redfish/v1/" >/dev/null && break; sleep 0.2; done
+  curl -sf "http://127.0.0.1:$p/redfish/v1/" >/dev/null || fail "Redfish mockup server on :$p did not come up"
 done
 for _ in $(seq 50); do ipmitool -I lanplus -H 127.0.0.1 -p 9623 -U admin -P secret chassis power status >/dev/null 2>&1 && break; sleep 0.2; done
 ipmitool -I lanplus -H 127.0.0.1 -p 9623 -U admin -P secret chassis power status || fail "ipmi_sim did not come up"
