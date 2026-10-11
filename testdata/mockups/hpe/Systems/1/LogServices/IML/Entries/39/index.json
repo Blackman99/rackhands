@@ -1,0 +1,16 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/39",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-01T09:00:00Z",
+  "EntryType": "Oem",
+  "Id": "39",
+  "Message": "Firmware flashed (iLO 5 3.08)",
+  "Oem": {
+    "Hpe": {
+      "Class": 32,
+      "Code": 1,
+      "Severity": "Informational"
+    }
+  },
+  "Severity": "OK"
+}

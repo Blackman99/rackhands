@@ -1,0 +1,18 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/AuditLog/Entries",
+  "@odata.type": "#LogEntryCollection.LogEntryCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Managers/1/LogServices/AuditLog/Entries/audit_88",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-08T14:22:00+00:00",
+      "EntryType": "Event",
+      "Id": "audit_88",
+      "Message": "Remote Login Successful. Login ID: monitor using Redfish",
+      "MessageId": "FQXSPUN0018I",
+      "Severity": "OK"
+    }
+  ],
+  "Members@odata.count": 1,
+  "Name": "Log Entries"
+}

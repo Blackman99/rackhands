@@ -1,0 +1,53 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Power",
+  "@odata.type": "#Power.v1_7_1.Power",
+  "Name": "Power",
+  "PowerControl": [
+    {
+      "MemberId": "0",
+      "Name": "System Power Control",
+      "PowerConsumedWatts": 498
+    }
+  ],
+  "PowerSupplies": [
+    {
+      "MemberId": "0",
+      "Name": "Power Supply 1",
+      "PowerInputWatts": 251,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "MemberId": "1",
+      "Name": "Power Supply 2",
+      "PowerInputWatts": 247,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Voltages": [
+    {
+      "LowerThresholdCritical": 10.8,
+      "Name": "12V",
+      "ReadingVolts": 12.06,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 13.2
+    },
+    {
+      "LowerThresholdCritical": 2.6,
+      "Name": "VBAT",
+      "ReadingVolts": 2.71,
+      "Status": {
+        "Health": "Warning",
+        "State": "Enabled"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot0002",
+  "@odata.type": "#BootOption.v1_0_3.BootOption",
+  "BootOptionReference": "Boot0002",
+  "DisplayName": "Network 1: PXE IPv4",
+  "Id": "Boot0002",
+  "Name": "Boot Option"
+}

@@ -1,0 +1,85 @@
+package config
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func write(t *testing.T, s string) string {
+	p := filepath.Join(t.TempDir(), "t.yaml")
+	if err := os.WriteFile(p, []byte(s), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	return p
+}
+
+func TestLoadDefaultsAndSelect(t *testing.T) {
+	p := write(t, `
+defaults:
+  username: monitor
+  password_env: RH_TEST_PW
+  insecure: false
+targets:
+  - {name: a, redfish: "https://10.0.0.1", tags: [db]}
+  - {name: b, ipmi: "10.0.0.2:6230", tags: [db, lab], allow: [power]}
+  - {name: c, redfish: "10.0.0.3", username: root, password: x}
+`)
+	t.Setenv("RH_TEST_PW", "s3cret")
+	f, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ := f.Find("a")
+	if a.Username != "monitor" || a.InsecureTLS() {
+		t.Fatalf("defaults not applied: %+v", a)
+	}
+	if pw, _ := a.Secret(); pw != "s3cret" {
+		t.Fatal("password_env")
+	}
+	c, _ := f.Find("c")
+	if pw, _ := c.Secret(); pw != "x" || c.Username != "root" {
+		t.Fatal("inline override")
+	}
+	b, _ := f.Find("b")
+	if h, port := b.IPMIAddr(); h != "10.0.0.2" || port != 6230 {
+		t.Fatalf("ipmi addr %s %d", h, port)
+	}
+	sel, err := f.Select([]string{"tag:db"})
+	if err != nil || len(sel) != 2 {
+		t.Fatalf("tag select: %v %d", err, len(sel))
+	}
+	sel, _ = f.Select([]string{"all", "a"})
+	if len(sel) != 3 {
+		t.Fatal("dedupe")
+	}
+	if _, err := f.Select([]string{"nope"}); err == nil {
+		t.Fatal("unknown target")
+	}
+}
+
+func TestValidation(t *testing.T) {
+	for _, bad := range []string{
+		"targets: [{redfish: x}]",
+		"targets: [{name: a}]",
+		"targets: [{name: a, redfish: x}, {name: a, redfish: y}]",
+		"targets: [{name: a, redfish: x, allow: [reboot]}]",
+	} {
+		if _, err := Load(write(t, bad)); err == nil {
+			t.Errorf("accepted %s", bad)
+		}
+	}
+}
+
+func TestMissingDefaultFileIsEmpty(t *testing.T) {
+	t.Setenv("RACKHANDS_CONFIG", "")
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	t.Setenv("HOME", t.TempDir())
+	f, err := Load("")
+	if err != nil || len(f.Targets) != 0 {
+		t.Fatalf("%v", err)
+	}
+	if _, err := Load(filepath.Join(t.TempDir(), "missing.yaml")); err == nil {
+		t.Fatal("explicit missing file must error")
+	}
+}

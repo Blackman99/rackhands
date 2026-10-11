@@ -1,0 +1,32 @@
+# ~/.config/rackhands/targets.yaml  (or $RACKHANDS_CONFIG)
+defaults:
+  username: rackhands-ro          # a read-only BMC account is enough for every read command
+  password_env: BMC_PASSWORD      # or password_file: ~/.config/rackhands/bmc.pass
+  timeout: 20s
+  # insecure: true is the default because BMCs ship self-signed certificates;
+  # set ca_file to verify them instead.
+
+targets:
+  - name: db-01
+    redfish: https://10.20.0.11   # Dell iDRAC9
+    ipmi: 10.20.0.11              # fallback when Redfish is down or missing a feature
+    tags: [prod, db]
+    allow: [power]                # second key: this box may be power-cycled (with --allow power)
+
+  - name: web-07
+    redfish: https://10.20.0.27   # HPE iLO 5
+    tags: [prod, web]
+
+  - name: k8s-12
+    redfish: https://10.20.1.12   # Lenovo XCC
+    session_auth: true            # one session per run instead of Basic auth per request
+    ca_file: /etc/ssl/bmc-ca.pem
+    insecure: false
+
+  - name: lab-x10
+    ipmi: 192.168.88.40           # pre-Redfish Supermicro X10: IPMI only
+    username: ADMIN
+    password_file: ~/.config/rackhands/lab.pass
+    allow: [power, boot]
+
+# audit_log: ~/.local/state/rackhands/audit.jsonl

@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot0009",
+  "@odata.type": "#BootOption.v1_0_1.BootOption",
+  "BootOptionReference": "Boot0009",
+  "DisplayName": "Embedded LOM 1 Port 1 : HPE Ethernet 1Gb 4-port 369i Adapter - NIC (PXE IPv4)",
+  "Id": "Boot0009",
+  "Name": "Boot Option"
+}

@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/VirtualMedia",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/VirtualMedia/CD"
+    }
+  ],
+  "Members@odata.count": 1,
+  "Name": "Virtual Media Services"
+}

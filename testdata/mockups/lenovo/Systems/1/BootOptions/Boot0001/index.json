@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot0001",
+  "@odata.type": "#BootOption.v1_0_3.BootOption",
+  "BootOptionReference": "Boot0001",
+  "DisplayName": "ubuntu (M.2 Bay 0)",
+  "Id": "Boot0001",
+  "Name": "Boot Option"
+}

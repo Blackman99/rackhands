@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/BootOptions/Boot0004",
+  "@odata.type": "#BootOption.v1_0_4.BootOption",
+  "BootOptionReference": "Boot0004",
+  "DisplayName": "PXE Device 1: Embedded NIC 1 Port 1 Partition 1",
+  "Id": "Boot0004",
+  "Name": "Boot Option"
+}

@@ -1,0 +1,72 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "@odata.type": "#ComputerSystem.v1_5_1.ComputerSystem",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "ResetType@Redfish.AllowableValues": [
+        "On",
+        "ForceOff",
+        "GracefulShutdown",
+        "GracefulRestart",
+        "ForceRestart",
+        "Nmi",
+        "ForceOn"
+      ],
+      "target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+    }
+  },
+  "BiosVersion": "4.0",
+  "Boot": {
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideMode": "Legacy",
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": [
+      "None",
+      "Pxe",
+      "Hdd",
+      "Cd",
+      "BiosSetup",
+      "Usb"
+    ]
+  },
+  "Id": "1",
+  "Links": {
+    "Chassis": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "Manufacturer": "Supermicro",
+  "MemorySummary": {
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    },
+    "TotalSystemMemoryGiB": 192
+  },
+  "Model": "SYS-6019U-TR4",
+  "Name": "System",
+  "PowerState": "On",
+  "ProcessorSummary": {
+    "Count": 2,
+    "Model": "Intel(R) Xeon(R) Gold 6230 CPU @ 2.10GHz",
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    }
+  },
+  "SerialNumber": "S41234567890",
+  "Status": {
+    "Health": "Warning",
+    "HealthRollup": "Warning",
+    "State": "Enabled"
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "@odata.etag": "W/\"6a1b2c3d\"",
+  "@odata.id": "/redfish/v1/Systems/1",
+  "@odata.type": "#ComputerSystem.v1_16_0.ComputerSystem",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "ResetType@Redfish.AllowableValues": [
+        "On",
+        "Nmi",
+        "GracefulShutdown",
+        "GracefulRestart",
+        "ForceOn",
+        "ForceOff",
+        "ForceRestart"
+      ],
+      "target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+    }
+  },
+  "BiosVersion": "AFE128K-1.80",
+  "Boot": {
+    "BootOptions": {
+      "@odata.id": "/redfish/v1/Systems/1/BootOptions"
+    },
+    "BootOrder": [
+      "Boot0001",
+      "Boot0002"
+    ],
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideMode": "UEFI",
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": [
+      "None",
+      "Pxe",
+      "Cd",
+      "Usb",
+      "Hdd",
+      "BiosSetup",
+      "Diags",
+      "UefiTarget"
+    ]
+  },
+  "HostName": "k8s-node-12",
+  "Id": "1",
+  "Links": {
+    "Chassis": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "LogServices": {
+    "@odata.id": "/redfish/v1/Systems/1/LogServices"
+  },
+  "Manufacturer": "Lenovo",
+  "MemorySummary": {
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    },
+    "TotalSystemMemoryGiB": 384
+  },
+  "Model": "ThinkSystem SR650 V2 -[7Z73CTO1WW]-",
+  "Name": "ComputerSystem",
+  "PowerState": "On",
+  "ProcessorSummary": {
+    "Count": 2,
+    "Model": "Intel(R) Xeon(R) Gold 5318Y CPU @ 2.10GHz",
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    }
+  },
+  "SKU": "7Z73CTO1WW",
+  "SerialNumber": "J30AB123",
+  "Status": {
+    "Health": "OK",
+    "HealthRollup": "OK",
+    "State": "Enabled"
+  }
+}

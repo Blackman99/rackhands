@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries/3",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-11T03:02:51+00:00",
+  "EntryType": "SEL",
+  "Id": "3",
+  "Message": "[Voltage] VBAT - Lower Non-critical - going low - Assertion",
+  "SensorType": "Voltage",
+  "Severity": "Warning"
+}

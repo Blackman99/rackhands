@@ -1,0 +1,7 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory",
+  "@odata.type": "#Collection",
+  "Members": [],
+  "Members@odata.count": 0,
+  "Name": "Memory"
+}

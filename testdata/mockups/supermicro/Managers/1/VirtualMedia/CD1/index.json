@@ -1,0 +1,20 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/CD1",
+  "@odata.type": "#VirtualMedia.v1_6_0.VirtualMedia",
+  "ConnectedVia": "NotConnected",
+  "Id": "CD1",
+  "Image": null,
+  "Inserted": false,
+  "MediaTypes": [
+    "CD",
+    "DVD"
+  ],
+  "Name": "Virtual CD1",
+  "Oem": {
+    "Supermicro": {
+      "VirtualMediaConfig": {
+        "@odata.id": "/redfish/v1/Managers/1/VM1/CfgCD"
+      }
+    }
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/38",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-09-30T23:11:47Z",
+  "EntryType": "Oem",
+  "Id": "38",
+  "Message": "Server power restored.",
+  "Oem": {
+    "Hpe": {
+      "Class": 1,
+      "Code": 2,
+      "Severity": "Repaired"
+    }
+  },
+  "Severity": "OK"
+}

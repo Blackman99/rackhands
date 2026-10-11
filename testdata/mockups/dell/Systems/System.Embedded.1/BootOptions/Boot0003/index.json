@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/BootOptions/Boot0003",
+  "@odata.type": "#BootOption.v1_0_4.BootOption",
+  "BootOptionReference": "Boot0003",
+  "DisplayName": "Integrated RAID Controller 1: ubuntu",
+  "Id": "Boot0003",
+  "Name": "Boot Option"
+}

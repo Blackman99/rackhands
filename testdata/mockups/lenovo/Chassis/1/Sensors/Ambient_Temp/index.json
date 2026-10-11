@@ -1,0 +1,18 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Sensors/Ambient_Temp",
+  "@odata.type": "#Sensor.v1_6_0.Sensor",
+  "Id": "Ambient_Temp",
+  "Name": "Ambient Temp",
+  "Reading": 23,
+  "ReadingType": "Temperature",
+  "ReadingUnits": "Cel",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "Thresholds": {
+    "UpperCritical": {
+      "Reading": 47
+    }
+  }
+}

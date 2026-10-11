@@ -1,0 +1,16 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/41",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-10T22:04:13Z",
+  "EntryType": "Oem",
+  "Id": "41",
+  "Message": "System Fans Not Redundant",
+  "Oem": {
+    "Hpe": {
+      "Class": 3,
+      "Code": 4,
+      "Severity": "Caution"
+    }
+  },
+  "Severity": "Warning"
+}

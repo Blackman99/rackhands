@@ -1,0 +1,21 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/VirtualMedia/CD",
+  "@odata.type": "#VirtualMedia.v1_6_0.VirtualMedia",
+  "Actions": {
+    "#VirtualMedia.EjectMedia": {
+      "target": "/redfish/v1/Managers/iDRAC.Embedded.1/VirtualMedia/CD/Actions/VirtualMedia.EjectMedia"
+    },
+    "#VirtualMedia.InsertMedia": {
+      "target": "/redfish/v1/Managers/iDRAC.Embedded.1/VirtualMedia/CD/Actions/VirtualMedia.InsertMedia"
+    }
+  },
+  "ConnectedVia": "NotConnected",
+  "Id": "CD",
+  "Image": null,
+  "Inserted": false,
+  "MediaTypes": [
+    "CD",
+    "DVD"
+  ],
+  "Name": "Virtual CD"
+}

@@ -1,0 +1,142 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "@odata.type": "#ComputerSystem.v1_17_0.ComputerSystem",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "ResetType@Redfish.AllowableValues": [
+        "On",
+        "ForceOff",
+        "GracefulShutdown",
+        "ForceRestart",
+        "Nmi",
+        "PushPowerButton",
+        "GracefulRestart"
+      ],
+      "target": "/redfish/v1/Systems/1/Actions/ComputerSystem.Reset"
+    }
+  },
+  "BiosVersion": "U46 v2.80 (01/19/2026)",
+  "Boot": {
+    "BootOptions": {
+      "@odata.id": "/redfish/v1/Systems/1/BootOptions"
+    },
+    "BootOrder": [
+      "Boot000A",
+      "Boot0009",
+      "Boot0012"
+    ],
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideMode": "UEFI",
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": [
+      "None",
+      "Pxe",
+      "Cd",
+      "Usb",
+      "Hdd",
+      "BiosSetup",
+      "Utilities",
+      "UefiTarget",
+      "UefiHttp",
+      "UefiShell"
+    ]
+  },
+  "HostName": "web-07",
+  "Id": "1",
+  "Links": {
+    "Chassis": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "LogServices": {
+    "@odata.id": "/redfish/v1/Systems/1/LogServices"
+  },
+  "Manufacturer": "HPE",
+  "MemorySummary": {
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    },
+    "TotalSystemMemoryGiB": 256
+  },
+  "Model": "ProLiant DL380 Gen10 Plus",
+  "Name": "Computer System",
+  "Oem": {
+    "Hpe": {
+      "AggregateHealthStatus": {
+        "BiosOrHardwareHealth": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "FanRedundancy": "Redundant",
+        "Fans": {
+          "Status": {
+            "Health": "Warning"
+          }
+        },
+        "Memory": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "Network": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "PowerSupplies": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "PowerSupplyRedundancy": "Redundant",
+        "Processors": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "SmartStorageBattery": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "Storage": {
+          "Status": {
+            "Health": "OK"
+          }
+        },
+        "Temperatures": {
+          "Status": {
+            "Health": "OK"
+          }
+        }
+      }
+    }
+  },
+  "PowerState": "On",
+  "ProcessorSummary": {
+    "Count": 2,
+    "Model": "Intel(R) Xeon(R) Silver 4314 CPU @ 2.40GHz",
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    }
+  },
+  "SKU": "P05172-B21",
+  "SerialNumber": "MXQ12345AB",
+  "Status": {
+    "Health": "Warning",
+    "HealthRollup": "Warning",
+    "State": "Enabled"
+  }
+}

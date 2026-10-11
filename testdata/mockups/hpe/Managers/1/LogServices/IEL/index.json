@@ -1,0 +1,9 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL",
+  "@odata.type": "#LogService.v1_0_0.LogService",
+  "Entries": {
+    "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries"
+  },
+  "Id": "IEL",
+  "Name": "iLO Event Log"
+}

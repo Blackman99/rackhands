@@ -1,0 +1,16 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/40",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-10T22:04:11Z",
+  "EntryType": "Oem",
+  "Id": "40",
+  "Message": "Fan Failure (Fan 3, Location System)",
+  "Oem": {
+    "Hpe": {
+      "Class": 3,
+      "Code": 3,
+      "Severity": "Critical"
+    }
+  },
+  "Severity": "Critical"
+}

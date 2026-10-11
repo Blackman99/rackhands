@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/BMC-Backup",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "BMC-Backup",
+  "Name": "XCC Backup Firmware",
+  "Updateable": true,
+  "Version": "UHC828E 1.92"
+}

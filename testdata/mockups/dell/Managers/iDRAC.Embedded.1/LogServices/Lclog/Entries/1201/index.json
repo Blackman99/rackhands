@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Lclog/Entries/1201",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-09T03:15:00-05:00",
+  "EntryType": "Event",
+  "Id": "1201",
+  "Message": "Successfully logged in using monitor, from 10.0.0.9 and REDFISH.",
+  "MessageId": "USR0030",
+  "Severity": "OK"
+}

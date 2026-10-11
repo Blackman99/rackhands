@@ -1,0 +1,20 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/BMC-Primary"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/BMC-Backup"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/UEFI"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/LXPM"
+    }
+  ],
+  "Members@odata.count": 4,
+  "Name": "Firmware Inventory"
+}

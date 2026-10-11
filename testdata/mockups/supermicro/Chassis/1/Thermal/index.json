@@ -1,0 +1,96 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Thermal",
+  "@odata.type": "#Thermal.v1_7_0.Thermal",
+  "Fans": [
+    {
+      "Name": "FAN1",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 4300,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "FAN2",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 4400,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "FAN3",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 4500,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "FAN4",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 4600,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "FAN5",
+      "Status": {
+        "State": "Absent"
+      }
+    }
+  ],
+  "Name": "Thermal",
+  "Temperatures": [
+    {
+      "Name": "CPU1 Temp",
+      "PhysicalContext": "CPU",
+      "ReadingCelsius": 92,
+      "Status": {
+        "Health": "Warning",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 100,
+      "UpperThresholdNonCritical": 90
+    },
+    {
+      "Name": "CPU2 Temp",
+      "PhysicalContext": "CPU",
+      "ReadingCelsius": 61,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 100,
+      "UpperThresholdNonCritical": 90
+    },
+    {
+      "Name": "System Temp",
+      "PhysicalContext": "SystemBoard",
+      "ReadingCelsius": 31,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 85,
+      "UpperThresholdNonCritical": 80
+    },
+    {
+      "Name": "PCH Temp",
+      "ReadingCelsius": 49,
+      "Status": {
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 95
+    }
+  ]
+}

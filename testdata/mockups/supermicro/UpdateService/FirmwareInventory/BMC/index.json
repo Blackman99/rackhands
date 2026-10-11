@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/BMC",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "BMC",
+  "Name": "BMC Firmware",
+  "Updateable": true,
+  "Version": "01.73.12"
+}

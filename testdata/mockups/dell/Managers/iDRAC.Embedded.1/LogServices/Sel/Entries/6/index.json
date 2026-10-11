@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/6",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-09T03:12:41-05:00",
+  "EntryType": "SEL",
+  "Id": "6",
+  "Message": "Power supply redundancy is lost.",
+  "MessageId": "RDU0012",
+  "SensorType": "Power Supply",
+  "Severity": "Critical"
+}

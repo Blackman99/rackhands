@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/LXPM",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "LXPM",
+  "Name": "LXPM Diagnostic Software",
+  "Updateable": true,
+  "Version": "PDL146M-3.30"
+}

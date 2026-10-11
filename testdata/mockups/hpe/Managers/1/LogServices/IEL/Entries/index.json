@@ -1,0 +1,17 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries",
+  "@odata.type": "#LogEntryCollection.LogEntryCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Managers/1/LogServices/IEL/Entries/1",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-10T22:05:00Z",
+      "EntryType": "Oem",
+      "Id": "1",
+      "Message": "Browser login: admin - 10.0.0.9",
+      "Severity": "OK"
+    }
+  ],
+  "Members@odata.count": 1,
+  "Name": "Log Entries"
+}

@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/4",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-09-28T08:00:00-05:00",
+  "EntryType": "SEL",
+  "Id": "4",
+  "Message": "OEM software event.",
+  "MessageId": "SEL9901",
+  "SensorType": "OEM",
+  "Severity": "OK"
+}

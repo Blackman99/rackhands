@@ -1,0 +1,30 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog/Entries",
+  "@odata.type": "#LogEntryCollection.LogEntryCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog/Entries/plat_12",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-08T14:20:00+00:00",
+      "EntryType": "Event",
+      "Id": "plat_12",
+      "Message": "The SMTP Server is not configured.",
+      "MessageId": "FQXSPEM4041I",
+      "Severity": "OK"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog/Entries/plat_11",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-07T06:01:12+00:00",
+      "EntryType": "Event",
+      "Id": "plat_11",
+      "MessageArgs": [
+        "DIMM 14"
+      ],
+      "MessageId": "FQXSPMA0025I",
+      "Severity": "Warning"
+    }
+  ],
+  "Members@odata.count": 2,
+  "Name": "Log Entries"
+}

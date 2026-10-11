@@ -1,0 +1,28 @@
+{
+  "@odata.id": "/redfish/v1/",
+  "@odata.type": "#ServiceRoot.v1_15_0.ServiceRoot",
+  "Chassis": {
+    "@odata.id": "/redfish/v1/Chassis"
+  },
+  "Managers": {
+    "@odata.id": "/redfish/v1/Managers"
+  },
+  "Name": "Root Service",
+  "Oem": {
+    "Supermicro": {
+      "@odata.type": "#SmcServiceRoot.v1_0_0.SmcServiceRoot"
+    }
+  },
+  "Product": "SYS-6019U-TR4",
+  "RedfishVersion": "1.17.0",
+  "SessionService": {
+    "@odata.id": "/redfish/v1/SessionService"
+  },
+  "Systems": {
+    "@odata.id": "/redfish/v1/Systems"
+  },
+  "UpdateService": {
+    "@odata.id": "/redfish/v1/UpdateService"
+  },
+  "Vendor": "Supermicro"
+}

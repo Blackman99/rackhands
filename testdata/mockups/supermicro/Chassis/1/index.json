@@ -1,0 +1,29 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1",
+  "@odata.type": "#Chassis.v1_5_1.Chassis",
+  "ChassisType": "RackMount",
+  "Id": "1",
+  "Links": {
+    "ComputerSystems": [
+      {
+        "@odata.id": "/redfish/v1/Systems/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "Name": "Computer System Chassis",
+  "Power": {
+    "@odata.id": "/redfish/v1/Chassis/1/Power"
+  },
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  },
+  "Thermal": {
+    "@odata.id": "/redfish/v1/Chassis/1/Thermal"
+  }
+}

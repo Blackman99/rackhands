@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot000A",
+  "@odata.type": "#BootOption.v1_0_1.BootOption",
+  "BootOptionReference": "Boot000A",
+  "DisplayName": "HPE MR416i-a Gen10+ - Ubuntu",
+  "Id": "Boot000A",
+  "Name": "Boot Option"
+}

@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/BIOS",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "BIOS",
+  "Name": "BIOS",
+  "Updateable": true,
+  "Version": "4.0"
+}

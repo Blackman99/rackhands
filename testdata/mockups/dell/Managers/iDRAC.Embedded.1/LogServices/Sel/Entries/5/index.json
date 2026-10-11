@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/5",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-02T11:30:02-05:00",
+  "EntryType": "SEL",
+  "Id": "5",
+  "Message": "Internal error has occurred check for additional logs.",
+  "MessageId": "CPU0000",
+  "SensorType": "Processor",
+  "Severity": "OK"
+}

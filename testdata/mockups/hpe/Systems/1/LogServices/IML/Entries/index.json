@@ -1,0 +1,20 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries",
+  "@odata.type": "#LogEntryCollection.LogEntryCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/41"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/40"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/39"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries/38"
+    }
+  ],
+  "Members@odata.count": 4,
+  "Name": "Log Entries"
+}

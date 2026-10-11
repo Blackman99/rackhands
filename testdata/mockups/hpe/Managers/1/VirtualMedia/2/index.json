@@ -1,0 +1,25 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/VirtualMedia/2",
+  "@odata.type": "#VirtualMedia.v1_6_0.VirtualMedia",
+  "ConnectedVia": "NotConnected",
+  "Id": "2",
+  "Image": null,
+  "Inserted": false,
+  "MediaTypes": [
+    "CD",
+    "DVD"
+  ],
+  "Name": "Virtual 2",
+  "Oem": {
+    "Hpe": {
+      "Actions": {
+        "#HpeiLOVirtualMedia.EjectVirtualMedia": {
+          "target": "/redfish/v1/Managers/1/VirtualMedia/2/Actions/Oem/Hpe/HpeiLOVirtualMedia.EjectVirtualMedia"
+        },
+        "#HpeiLOVirtualMedia.InsertVirtualMedia": {
+          "target": "/redfish/v1/Managers/1/VirtualMedia/2/Actions/Oem/Hpe/HpeiLOVirtualMedia.InsertVirtualMedia"
+        }
+      }
+    }
+  }
+}

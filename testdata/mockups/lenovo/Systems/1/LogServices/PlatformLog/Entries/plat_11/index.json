@@ -1,0 +1,12 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog/Entries/plat_11",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-07T06:01:12+00:00",
+  "EntryType": "Event",
+  "Id": "plat_11",
+  "MessageArgs": [
+    "DIMM 14"
+  ],
+  "MessageId": "FQXSPMA0025I",
+  "Severity": "Warning"
+}

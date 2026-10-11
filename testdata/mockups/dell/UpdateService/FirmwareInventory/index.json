@@ -1,0 +1,29 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-25227-7.00.00.172__iDRAC.Embedded.1-1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Previous-25227-6.10.80.00__iDRAC.Embedded.1-1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-159-1.13.2__BIOS.Setup.1-1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Available-159-1.14.1__BIOS.Setup.1-1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-0-52.21.0-4606__RAID.SL.3-1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-108255-22.31.6__NIC.Embedded.1-1-1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-0-00.3D.69__PSU.Slot.1"
+    }
+  ],
+  "Members@odata.count": 7,
+  "Name": "Firmware Inventory"
+}

@@ -1,0 +1,9 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/IML",
+  "@odata.type": "#LogService.v1_0_0.LogService",
+  "Entries": {
+    "@odata.id": "/redfish/v1/Systems/1/LogServices/IML/Entries"
+  },
+  "Id": "IML",
+  "Name": "Integrated Management Log"
+}

@@ -1,0 +1,52 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/System.Embedded.1/Power",
+  "@odata.type": "#Power.v1_7_1.Power",
+  "Name": "Power",
+  "PowerControl": [
+    {
+      "MemberId": "0",
+      "Name": "System Power Control",
+      "PowerConsumedWatts": 398
+    }
+  ],
+  "PowerSupplies": [
+    {
+      "LastPowerOutputWatts": 398,
+      "MemberId": "PSU.Slot.1",
+      "Name": "PS1 Status",
+      "PowerInputWatts": 412,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "LastPowerOutputWatts": 0,
+      "MemberId": "PSU.Slot.2",
+      "Name": "PS2 Status",
+      "PowerInputWatts": 0,
+      "Status": {
+        "Health": "Critical",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Voltages": [
+    {
+      "Name": "PS1 Voltage 1",
+      "ReadingVolts": 230,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "PS2 Voltage 2",
+      "ReadingVolts": 0,
+      "Status": {
+        "Health": "Critical",
+        "State": "Enabled"
+      }
+    }
+  ]
+}

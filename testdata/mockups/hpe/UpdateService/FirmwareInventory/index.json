@@ -1,0 +1,23 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/1"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/2"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/3"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/4"
+    },
+    {
+      "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/5"
+    }
+  ],
+  "Members@odata.count": 5,
+  "Name": "Firmware Inventory"
+}

@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries/1",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-05T10:00:00+00:00",
+  "EntryType": "SEL",
+  "Id": "1",
+  "Message": "[System Event] AC Power On - Assertion",
+  "SensorType": "System Event",
+  "Severity": "OK"
+}

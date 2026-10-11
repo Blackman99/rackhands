@@ -1,0 +1,9 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog",
+  "@odata.type": "#LogService.v1_2_0.LogService",
+  "Entries": {
+    "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog/Entries"
+  },
+  "Id": "PlatformLog",
+  "Name": "Platform Event Log"
+}

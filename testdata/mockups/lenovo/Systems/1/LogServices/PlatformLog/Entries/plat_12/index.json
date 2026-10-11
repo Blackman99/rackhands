@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/LogServices/PlatformLog/Entries/plat_12",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-08T14:20:00+00:00",
+  "EntryType": "Event",
+  "Id": "plat_12",
+  "Message": "The SMTP Server is not configured.",
+  "MessageId": "FQXSPEM4041I",
+  "Severity": "OK"
+}

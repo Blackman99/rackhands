@@ -1,0 +1,33 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Power",
+  "@odata.type": "#Power.v1_7_1.Power",
+  "Name": "Power",
+  "PowerControl": [
+    {
+      "MemberId": "0",
+      "Name": "System Power Control",
+      "PowerConsumedWatts": 364
+    }
+  ],
+  "PowerSupplies": [
+    {
+      "LastPowerOutputWatts": 188,
+      "MemberId": "0",
+      "Name": "HpeServerPowerSupply",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "LastPowerOutputWatts": 176,
+      "MemberId": "1",
+      "Name": "HpeServerPowerSupply",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Voltages": []
+}

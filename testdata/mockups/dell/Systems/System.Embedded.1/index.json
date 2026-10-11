@@ -1,0 +1,112 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1",
+  "@odata.type": "#ComputerSystem.v1_20_0.ComputerSystem",
+  "Actions": {
+    "#ComputerSystem.Reset": {
+      "ResetType@Redfish.AllowableValues": [
+        "On",
+        "ForceOff",
+        "ForceRestart",
+        "GracefulRestart",
+        "GracefulShutdown",
+        "PushPowerButton",
+        "Nmi",
+        "PowerCycle"
+      ],
+      "target": "/redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset"
+    }
+  },
+  "BiosVersion": "1.13.2",
+  "Boot": {
+    "BootOptions": {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/BootOptions"
+    },
+    "BootOrder": [
+      "Boot0003",
+      "Boot0004",
+      "Boot0001"
+    ],
+    "BootSourceOverrideEnabled": "Disabled",
+    "BootSourceOverrideMode": "UEFI",
+    "BootSourceOverrideTarget": "None",
+    "BootSourceOverrideTarget@Redfish.AllowableValues": [
+      "None",
+      "Pxe",
+      "Cd",
+      "Usb",
+      "Hdd",
+      "BiosSetup",
+      "Utilities",
+      "UefiTarget",
+      "UefiHttp",
+      "SDCard",
+      "UefiShell"
+    ]
+  },
+  "HostName": "db-01",
+  "Id": "System.Embedded.1",
+  "Links": {
+    "Chassis": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/System.Embedded.1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1"
+      }
+    ]
+  },
+  "Manufacturer": "Dell Inc.",
+  "Memory": {
+    "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Memory"
+  },
+  "MemorySummary": {
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    },
+    "TotalSystemMemoryGiB": 512
+  },
+  "Model": "PowerEdge R750",
+  "Name": "System",
+  "Oem": {
+    "Dell": {
+      "DellSystem": {
+        "@odata.type": "#DellSystem.v1_4_0.DellSystem",
+        "BatteryRollupStatus": "OK",
+        "CPURollupStatus": "OK",
+        "CurrentRollupStatus": "OK",
+        "FanRollupStatus": "OK",
+        "IntrusionRollupStatus": "OK",
+        "LicensingRollupStatus": "OK",
+        "PSRollupStatus": "Critical",
+        "SELRollupStatus": "Critical",
+        "StorageRollupStatus": "OK",
+        "TempRollupStatus": "OK",
+        "VoltRollupStatus": "OK"
+      }
+    }
+  },
+  "PowerState": "On",
+  "ProcessorSummary": {
+    "Count": 2,
+    "Model": "Intel(R) Xeon(R) Gold 6338 CPU @ 2.00GHz",
+    "Status": {
+      "Health": "OK",
+      "HealthRollup": "OK",
+      "State": "Enabled"
+    }
+  },
+  "Processors": {
+    "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Processors"
+  },
+  "SKU": "7XQ2KF3",
+  "SerialNumber": "CNWS3001A0012",
+  "Status": {
+    "Health": "Critical",
+    "HealthRollup": "Critical",
+    "State": "Enabled"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/BootOptions/Boot0001",
+  "@odata.type": "#BootOption.v1_0_4.BootOption",
+  "BootOptionReference": "Boot0001",
+  "DisplayName": "Embedded SATA Port Optical Drive",
+  "Id": "Boot0001",
+  "Name": "Boot Option"
+}

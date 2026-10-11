@@ -1,0 +1,52 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries",
+  "@odata.type": "#LogEntryCollection.LogEntryCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/7",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-09T03:12:44-05:00",
+      "EntryType": "SEL",
+      "Id": "7",
+      "Message": "The power input for power supply 2 is lost.",
+      "MessageId": "PSU0003",
+      "SensorType": "Power Supply",
+      "Severity": "Critical"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/6",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-09T03:12:41-05:00",
+      "EntryType": "SEL",
+      "Id": "6",
+      "Message": "Power supply redundancy is lost.",
+      "MessageId": "RDU0012",
+      "SensorType": "Power Supply",
+      "Severity": "Critical"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/5",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-02T11:30:02-05:00",
+      "EntryType": "SEL",
+      "Id": "5",
+      "Message": "Internal error has occurred check for additional logs.",
+      "MessageId": "CPU0000",
+      "SensorType": "Processor",
+      "Severity": "OK"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries/4",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-09-28T08:00:00-05:00",
+      "EntryType": "SEL",
+      "Id": "4",
+      "Message": "OEM software event.",
+      "MessageId": "SEL9901",
+      "SensorType": "OEM",
+      "Severity": "OK"
+    }
+  ],
+  "Members@odata.count": 4,
+  "Name": "Log Entries"
+}

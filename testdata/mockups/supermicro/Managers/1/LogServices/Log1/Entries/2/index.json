@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries/2",
+  "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+  "Created": "2026-10-11T02:44:19+00:00",
+  "EntryType": "SEL",
+  "Id": "2",
+  "Message": "[Temperature] CPU1 Temp - Upper Non-critical - going high - Assertion",
+  "SensorType": "Temperature",
+  "Severity": "Warning"
+}

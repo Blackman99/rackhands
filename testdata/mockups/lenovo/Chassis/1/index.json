@@ -1,0 +1,28 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1",
+  "@odata.type": "#Chassis.v1_15_0.Chassis",
+  "ChassisType": "RackMount",
+  "Id": "1",
+  "Links": {
+    "ComputerSystems": [
+      {
+        "@odata.id": "/redfish/v1/Systems/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "Name": "Chassis",
+  "Sensors": {
+    "@odata.id": "/redfish/v1/Chassis/1/Sensors"
+  },
+  "SerialNumber": "J30AB123",
+  "Status": {
+    "Health": "OK",
+    "HealthRollup": "OK",
+    "State": "Enabled"
+  }
+}

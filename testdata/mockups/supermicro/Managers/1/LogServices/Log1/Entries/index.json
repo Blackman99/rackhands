@@ -1,0 +1,38 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries",
+  "@odata.type": "#LogEntryCollection.LogEntryCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries/1",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-05T10:00:00+00:00",
+      "EntryType": "SEL",
+      "Id": "1",
+      "Message": "[System Event] AC Power On - Assertion",
+      "SensorType": "System Event",
+      "Severity": "OK"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries/2",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-11T02:44:19+00:00",
+      "EntryType": "SEL",
+      "Id": "2",
+      "Message": "[Temperature] CPU1 Temp - Upper Non-critical - going high - Assertion",
+      "SensorType": "Temperature",
+      "Severity": "Warning"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/1/LogServices/Log1/Entries/3",
+      "@odata.type": "#LogEntry.v1_15_0.LogEntry",
+      "Created": "2026-10-11T03:02:51+00:00",
+      "EntryType": "SEL",
+      "Id": "3",
+      "Message": "[Voltage] VBAT - Lower Non-critical - going low - Assertion",
+      "SensorType": "Voltage",
+      "Severity": "Warning"
+    }
+  ],
+  "Members@odata.count": 3,
+  "Name": "Log Entries"
+}

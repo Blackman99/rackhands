@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-0-00.3D.69__PSU.Slot.1",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "Installed-0-00.3D.69__PSU.Slot.1",
+  "Name": "PS1 Power Supply",
+  "Updateable": true,
+  "Version": "00.3D.69"
+}

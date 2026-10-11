@@ -1,0 +1,107 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Thermal",
+  "@odata.type": "#Thermal.v1_7_0.Thermal",
+  "Fans": [
+    {
+      "Name": "Fan 1",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 34,
+      "ReadingUnits": "Percent",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "Fan 2",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 34,
+      "ReadingUnits": "Percent",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "Fan 3",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 0,
+      "ReadingUnits": "Percent",
+      "Status": {
+        "Health": "Critical",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "Fan 4",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 34,
+      "ReadingUnits": "Percent",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "Fan 5",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 34,
+      "ReadingUnits": "Percent",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "Fan 6",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 34,
+      "ReadingUnits": "Percent",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Name": "Thermal",
+  "Temperatures": [
+    {
+      "Name": "01-Inlet Ambient",
+      "PhysicalContext": "Intake",
+      "ReadingCelsius": 22,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 42,
+      "UpperThresholdNonCritical": 42
+    },
+    {
+      "Name": "02-CPU 1",
+      "PhysicalContext": "CPU",
+      "ReadingCelsius": 40,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 0
+    },
+    {
+      "Name": "03-CPU 2",
+      "PhysicalContext": "CPU",
+      "ReadingCelsius": 40,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 0
+    },
+    {
+      "Name": "04-P1 DIMM 1-6",
+      "PhysicalContext": "SystemMemory",
+      "Status": {
+        "State": "Absent"
+      }
+    }
+  ]
+}

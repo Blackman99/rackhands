@@ -1,0 +1,26 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "@odata.type": "#Manager.v1_3_0.Manager",
+  "Actions": {
+    "#Manager.Reset": {
+      "ResetType@Redfish.AllowableValues": [
+        "GracefulRestart"
+      ],
+      "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+    }
+  },
+  "FirmwareVersion": "01.73.12",
+  "Id": "1",
+  "LogServices": {
+    "@odata.id": "/redfish/v1/Managers/1/LogServices"
+  },
+  "Model": "ASPEED",
+  "Name": "Manager",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "VirtualMedia": {
+    "@odata.id": "/redfish/v1/Managers/1/VirtualMedia"
+  }
+}

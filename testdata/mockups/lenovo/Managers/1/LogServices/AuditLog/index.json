@@ -1,0 +1,9 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1/LogServices/AuditLog",
+  "@odata.type": "#LogService.v1_2_0.LogService",
+  "Entries": {
+    "@odata.id": "/redfish/v1/Managers/1/LogServices/AuditLog/Entries"
+  },
+  "Id": "AuditLog",
+  "Name": "Audit Log"
+}

@@ -1,0 +1,21 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Sensors/SysBrd_3V3",
+  "@odata.type": "#Sensor.v1_6_0.Sensor",
+  "Id": "SysBrd_3V3",
+  "Name": "SysBrd 3.3V",
+  "Reading": 3.31,
+  "ReadingType": "Voltage",
+  "ReadingUnits": "V",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "Thresholds": {
+    "LowerCritical": {
+      "Reading": 2.97
+    },
+    "UpperCritical": {
+      "Reading": 3.6
+    }
+  }
+}

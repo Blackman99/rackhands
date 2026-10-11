@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot0012",
+  "@odata.type": "#BootOption.v1_0_1.BootOption",
+  "BootOptionReference": "Boot0012",
+  "DisplayName": "Generic USB Boot",
+  "Id": "Boot0012",
+  "Name": "Boot Option"
+}

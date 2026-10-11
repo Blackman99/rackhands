@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Installed-108255-22.31.6__NIC.Embedded.1-1-1",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "Installed-108255-22.31.6__NIC.Embedded.1-1-1",
+  "Name": "Broadcom Gigabit Ethernet BCM5720",
+  "Updateable": true,
+  "Version": "22.31.6"
+}

@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/4",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "4",
+  "Name": "Server Platform Services (SPS) Firmware",
+  "Updateable": false,
+  "Version": "6.1.4.47"
+}

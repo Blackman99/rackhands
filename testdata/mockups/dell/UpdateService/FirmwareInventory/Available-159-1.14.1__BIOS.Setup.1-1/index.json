@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/Available-159-1.14.1__BIOS.Setup.1-1",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "Available-159-1.14.1__BIOS.Setup.1-1",
+  "Name": "BIOS",
+  "Updateable": true,
+  "Version": "1.14.1"
+}

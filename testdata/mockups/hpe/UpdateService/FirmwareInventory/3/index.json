@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/3",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "3",
+  "Name": "Intelligent Platform Abstraction Data",
+  "Updateable": true,
+  "Version": "21.4.0 Build 37"
+}

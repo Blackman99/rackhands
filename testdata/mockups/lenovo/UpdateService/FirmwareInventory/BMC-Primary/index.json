@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/BMC-Primary",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "BMC-Primary",
+  "Name": "XCC Primary Firmware",
+  "Updateable": true,
+  "Version": "UHC830D 2.10"
+}

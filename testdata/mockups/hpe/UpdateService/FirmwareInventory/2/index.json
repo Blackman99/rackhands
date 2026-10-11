@@ -1,0 +1,8 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory/2",
+  "@odata.type": "#SoftwareInventory.v1_9_0.SoftwareInventory",
+  "Id": "2",
+  "Name": "System ROM",
+  "Updateable": true,
+  "Version": "U46 v2.80 (01/19/2026)"
+}

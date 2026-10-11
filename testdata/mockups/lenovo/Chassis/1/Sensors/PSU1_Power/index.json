@@ -1,0 +1,13 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Sensors/PSU1_Power",
+  "@odata.type": "#Sensor.v1_6_0.Sensor",
+  "Id": "PSU1_Power",
+  "Name": "PSU1 Input Power",
+  "Reading": 286,
+  "ReadingType": "Power",
+  "ReadingUnits": "W",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Lclog",
+  "@odata.type": "#LogService.v1_3_0.LogService",
+  "Entries": {
+    "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Lclog/Entries"
+  },
+  "Id": "Lclog",
+  "LogEntryType": "Event",
+  "Name": "LifeCycle Controller Log Service"
+}

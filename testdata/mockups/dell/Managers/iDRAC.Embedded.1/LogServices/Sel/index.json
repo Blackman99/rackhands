@@ -1,0 +1,10 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel",
+  "@odata.type": "#LogService.v1_3_0.LogService",
+  "Entries": {
+    "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/LogServices/Sel/Entries"
+  },
+  "Id": "Sel",
+  "LogEntryType": "SEL",
+  "Name": "SEL Log Service"
+}

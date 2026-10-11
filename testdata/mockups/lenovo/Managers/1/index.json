@@ -1,0 +1,28 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "@odata.type": "#Manager.v1_14_0.Manager",
+  "Actions": {
+    "#Manager.Reset": {
+      "ResetType@Redfish.AllowableValues": [
+        "GracefulRestart",
+        "ForceRestart"
+      ],
+      "target": "/redfish/v1/Managers/1/Actions/Manager.Reset"
+    }
+  },
+  "FirmwareVersion": "UHC830D 2.10",
+  "Id": "1",
+  "LogServices": {
+    "@odata.id": "/redfish/v1/Managers/1/LogServices"
+  },
+  "Manufacturer": "Lenovo",
+  "Model": "Lenovo XClarity Controller 2",
+  "Name": "Manager",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "VirtualMedia": {
+    "@odata.id": "/redfish/v1/Managers/1/VirtualMedia"
+  }
+}

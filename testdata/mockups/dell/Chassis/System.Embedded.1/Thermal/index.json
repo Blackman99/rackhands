@@ -1,0 +1,113 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/System.Embedded.1/Thermal",
+  "@odata.type": "#Thermal.v1_7_0.Thermal",
+  "Fans": [
+    {
+      "Name": "System Board Fan1A",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 8520,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "System Board Fan1B",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 8520,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "System Board Fan2A",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 8640,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "System Board Fan2B",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 8640,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "System Board Fan3A",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 8760,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    },
+    {
+      "Name": "System Board Fan3B",
+      "PhysicalContext": "SystemBoard",
+      "Reading": 8760,
+      "ReadingUnits": "RPM",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Name": "Thermal",
+  "Temperatures": [
+    {
+      "Name": "CPU1 Temp",
+      "PhysicalContext": "CPU",
+      "ReadingCelsius": 52,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 95,
+      "UpperThresholdNonCritical": 90
+    },
+    {
+      "Name": "CPU2 Temp",
+      "PhysicalContext": "CPU",
+      "ReadingCelsius": 55,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 95,
+      "UpperThresholdNonCritical": 90
+    },
+    {
+      "Name": "System Board Inlet Temp",
+      "PhysicalContext": "Intake",
+      "ReadingCelsius": 24,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 47,
+      "UpperThresholdNonCritical": 42
+    },
+    {
+      "Name": "System Board Exhaust Temp",
+      "PhysicalContext": "Exhaust",
+      "ReadingCelsius": 41,
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      },
+      "UpperThresholdCritical": 75,
+      "UpperThresholdNonCritical": 70
+    }
+  ]
+}

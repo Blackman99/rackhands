@@ -1,0 +1,23 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1/Sensors",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Chassis/1/Sensors/CPU1_Temp"
+    },
+    {
+      "@odata.id": "/redfish/v1/Chassis/1/Sensors/Ambient_Temp"
+    },
+    {
+      "@odata.id": "/redfish/v1/Chassis/1/Sensors/Fan1_Tach"
+    },
+    {
+      "@odata.id": "/redfish/v1/Chassis/1/Sensors/PSU1_Power"
+    },
+    {
+      "@odata.id": "/redfish/v1/Chassis/1/Sensors/SysBrd_3V3"
+    }
+  ],
+  "Members@odata.count": 5,
+  "Name": "Sensors"
+}

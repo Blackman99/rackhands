@@ -1,0 +1,17 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/BootOptions",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot000A"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot0009"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/BootOptions/Boot0012"
+    }
+  ],
+  "Members@odata.count": 3,
+  "Name": "Boot Options"
+}
