@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rackhands — remote hands for your racks (Redfish + IPMI, CLI + MCP)</title>
+<meta name="description" content="One binary that reads and operates server BMCs across Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro and any Redfish BMC, with IPMI fallback. Read-only by default; power, firmware, boot and virtual media need two keys and a confirmation. CLI and MCP server.">
+<link rel="canonical" href="https://blackman99.github.io/rackhands/">
+<meta name="theme-color" content="#c79a3b">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="icon" href="logo-512.png" type="image/png" sizes="512x512">
+<link rel="apple-touch-icon" href="logo-512.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="rackhands">
+<meta property="og:url" content="https://blackman99.github.io/rackhands/">
+<meta property="og:title" content="rackhands — remote hands for your racks">
+<meta property="og:description" content="Read every BMC (iDRAC, iLO, XCC, Supermicro, IPMI) from one CLI or MCP server. Nothing that can take a machine down runs without two keys and a signature.">
+<meta property="og:image" content="https://blackman99.github.io/rackhands/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A wall of brass safe-deposit box doors, one per server; one door stands open on wine velvet.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="rackhands — remote hands for your racks">
+<meta name="twitter:description" content="Cross-vendor Redfish + IPMI for humans and AI agents. Read-only by default; dangerous ops need two keys and confirmation.">
+<meta name="twitter:image" content="https://blackman99.github.io/rackhands/og-image.png">
+<link rel="preload" href="fonts/gloock-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/hanken-grotesk-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/hanken-grotesk-600.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/martian-mono-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="style.css">
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"SoftwareApplication","name":"rackhands","applicationCategory":"DeveloperApplication","operatingSystem":"Linux, macOS, Windows","license":"https://opensource.org/licenses/MIT","url":"https://blackman99.github.io/rackhands/","codeRepository":"https://github.com/Blackman99/rackhands","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"}}</script>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="wall" id="top">
+<div class="plate">
+  <p class="eyebrow">rackhands · Redfish + IPMI · CLI + MCP</p>
+  <h1>Remote hands for your racks.</h1>
+  <p class="lede">Read every BMC: iDRAC, iLO, XCC, Supermicro, plain IPMI. Open none without two keys and a signature.</p>
+  <div class="cta">
+    <code class="cmd">go install github.com/Blackman99/rackhands/cmd/rackhands@latest</code>
+    <a class="btn" href="https://github.com/Blackman99/rackhands">GitHub</a>
+    <a class="btn" href="docs/">Docs</a>
+    <a class="btn" href="https://github.com/Blackman99/rackhands/releases/latest">Binaries</a>
+  </div>
+</div>
+<div class="door crit" aria-hidden="true"><span class="no">db-01</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="PSU 2 · 0 W|CRITICAL|SEL · 3 new">PSU 2 · 0 W</span><span class="bmc">iDRAC 9</span></div>
+<div class="door" aria-hidden="true"><span class="no">db-02</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|inlet 22 C|On">OK</span><span class="bmc">iDRAC 9</span></div>
+<div class="door crit" aria-hidden="true"><span class="no">web-07</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="Fan 3 · 0 %|CRITICAL|IML · fan">Fan 3 · 0 %</span><span class="bmc">iLO 5</span></div>
+<div class="door" aria-hidden="true"><span class="no">web-08</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|iLO 1.62">OK</span><span class="bmc">iLO 6</span></div>
+<div class="door" aria-hidden="true"><span class="no">k8s-12</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|CPU 51 C|On">OK</span><span class="bmc">XCC 2</span></div>
+<div class="door" aria-hidden="true"><span class="no">k8s-13</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|UEFI · Pxe">OK</span><span class="bmc">XCC 2</span></div>
+<div class="door warn" aria-hidden="true"><span class="no">lab-x10</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="PSU2 117 C|WARNING|via ipmi">PSU2 117 C</span><span class="bmc">IPMI</span></div>
+<div class="door warn" aria-hidden="true"><span class="no">x11-bk</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="VBAT 2.71 V|WARNING|Log1 · 2">VBAT 2.71 V</span><span class="bmc">SMC X11</span></div>
+<div class="door" aria-hidden="true"><span class="no">db-03</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|BIOS 1.13">OK</span><span class="bmc">iDRAC 9</span></div>
+<div class="door" aria-hidden="true"><span class="no">web-09</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|IML · 0">OK</span><span class="bmc">iLO 5</span></div>
+<div class="door" aria-hidden="true"><span class="no">k8s-14</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|Off|standby">OK</span><span class="bmc">XCC 2</span></div>
+<div class="door" aria-hidden="true"><span class="no">gpu-02</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|GPU 61 C|On">OK</span><span class="bmc">SMC H13</span></div>
+<div class="door" aria-hidden="true"><span class="no">nas-01</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|SEL · 0">OK</span><span class="bmc">iDRAC 8</span></div>
+<div class="door" aria-hidden="true"><span class="no">edge-4</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|Redfish">OK</span><span class="bmc">OpenBMC</span></div>
+<div class="door" aria-hidden="true"><span class="no">ci-03</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|FAN1 2400|via ipmi">OK</span><span class="bmc">IPMI</span></div>
+<div class="door" aria-hidden="true"><span class="no">db-04</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|inlet 24 C">OK</span><span class="bmc">iDRAC 9</span></div>
+<div class="door" aria-hidden="true"><span class="no">web-10</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|On">OK</span><span class="bmc">iLO 6</span></div>
+<div class="door" aria-hidden="true"><span class="no">k8s-15</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|BMC 4.20">OK</span><span class="bmc">XCC 2</span></div>
+<div class="door" aria-hidden="true"><span class="no">mq-02</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|iLO4 2.82">OK</span><span class="bmc">iLO 4</span></div>
+<div class="door" aria-hidden="true"><span class="no">log-01</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|Log1 · 0">OK</span><span class="bmc">SMC X12</span></div>
+<div class="door" aria-hidden="true"><span class="no">bk-05</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|SEL · 0">OK</span><span class="bmc">iDRAC 9</span></div>
+<div class="door" aria-hidden="true"><span class="no">lab-x9</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|Off|via ipmi">OK</span><span class="bmc">IPMI</span></div>
+<div class="door" aria-hidden="true"><span class="no">db-05</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|SEL · 1">OK</span><span class="bmc">iDRAC 9</span></div>
+<div class="door" aria-hidden="true"><span class="no">web-11</span><span class="kh"></span><span class="kh"></span><span class="win" data-r="OK|On|inlet 21 C">OK</span><span class="bmc">iLO 5</span></div>
+</header>
+
+<main id="main">
+
+<section class="drawer" aria-labelledby="h101">
+  <div class="front"><span class="handle" aria-hidden="true"></span><span class="boxno">No. 101</span></div>
+  <div class="body">
+    <h2 id="h101">Reading needs no key.</h2>
+    <p>Each vendor puts the same facts in different places. rackhands knows where to look and gives every box the same shape: inventory, health rollup, sensors, event log, power, firmware, boot order. You get a table for you, JSON for scripts, and structured tool results for agents.</p>
+    <pre class="term" tabindex="0"><span class="pr">$</span> rackhands health
+CRITICAL  db-01   (Dell, via redfish)
+   Critical  subsystem power supplies  — iDRAC rollup
+   Critical  psu PS2 Status            — reading 0 W
+CRITICAL  web-07  (HPE, via redfish)
+   Warning   subsystem Fans            — iLO aggregate health
+   Critical  fan Fan 3                 — reading 0 %
+OK        k8s-12  (Lenovo, via redfish)
+WARNING   x11-bk  (Supermicro, via redfish)
+   Warning   voltage VBAT              — reading 2.71 V
+WARNING   lab-x10 (Supermicro, via ipmi (fallback))
+   Warning   temperature PSU2 Temp     — reading 117 C</pre>
+    <table class="quirks">
+      <caption>Same question, four dialects</caption>
+      <thead><tr><th scope="col"></th><th scope="col">Dell iDRAC</th><th scope="col">HPE iLO</th><th scope="col">Lenovo XCC</th><th scope="col">Supermicro</th></tr></thead>
+      <tbody>
+        <tr><th scope="row">Hardware log</th><td>LogServices/Sel</td><td>LogServices/IML</td><td>LogServices/PlatformLog</td><td>Managers/1/LogServices/Log1</td></tr>
+        <tr><th scope="row">Health rollup</th><td>Oem.Dell.DellSystem *RollupStatus</td><td>Oem.Hpe.AggregateHealthStatus</td><td>Status.HealthRollup</td><td>Status.HealthRollup</td></tr>
+        <tr><th scope="row">Sensors</th><td>Thermal + Power</td><td>Thermal + Power (0 = no threshold)</td><td>Sensors collection</td><td>Thermal + Power</td></tr>
+        <tr><th scope="row">Virtual media</th><td>standard InsertMedia</td><td>Oem.Hpe InsertVirtualMedia</td><td>standard InsertMedia</td><td>OEM only on X11</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="drawer" aria-labelledby="h102" id="open">
+  <div class="front"><span class="handle" aria-hidden="true"></span><span class="boxno">No. 102</span></div>
+  <div class="body two">
+    <div>
+      <h2 id="h102">Two keys and a signature.</h2>
+      <p>Power, boot override, BMC reset, firmware update and virtual media are <strong>off</strong> until you open them. Like a deposit box, each one needs both keys:</p>
+      <ol class="keys-list">
+        <li><strong>The vault key</strong>, <code>--allow power</code>, given when you start rackhands. Over MCP, a class you didn't allow is not even listed as a tool.</li>
+        <li><strong>The renter's key</strong>, <code>allow: [power]</code>, on that box in <code>targets.yaml</code>. A typo in the target name can't reach a box nobody opened.</li>
+        <li><strong>The register.</strong> You type the box's name, or pass <code>--yes db-01</code>. An agent gets a plan and a single-use token bound to that exact request. It hands the token back only after you say yes. Every plan and execution is written to the audit log.</li>
+      </ol>
+      <p>One box at a time: <code>all</code> and <code>tag:</code> work for reads and are refused for anything dangerous.</p>
+    </div>
+    <div class="vault" id="vault" data-a="0" data-b="0">
+      <div class="box">
+        <div class="inside" aria-live="polite">
+          <p class="mono" id="inside-text">PLAN  power force-off db-01 (Dell PowerEdge R750, ResetType=ForceOff, currently On)
+      POST /redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset
+      via redfish
+DONE  db-01: accepted (HTTP 204)</p>
+        </div>
+        <div class="bigdoor" aria-hidden="true">
+          <span class="no big">db-01</span>
+          <span class="lock la"><span class="key"></span></span>
+          <span class="lock lb"><span class="key"></span></span>
+          <span class="bolt"></span>
+          <span class="lab la-l">vault</span><span class="lab lb-l">renter</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button type="button" class="kbtn" id="ka" aria-pressed="false">Turn the vault key <code>--allow power</code></button>
+        <button type="button" class="kbtn" id="kb" aria-pressed="false">Turn the renter's key <code>allow: [power]</code></button>
+        <label class="register" for="sig">Sign the register: type the box name to force it off
+          <input id="sig" type="text" autocomplete="off" spellcheck="false" placeholder="db-01" disabled>
+        </label>
+        <p class="status mono" id="status" aria-live="polite">$ rackhands power db-01 force-off
+rackhands: operation not allowed: "power" is off; start with --allow power (dangerous operations are disabled by default)
+exit 3</p>
+        <button type="button" class="reset" id="reset">Lock it again</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="drawer" aria-labelledby="h103">
+  <div class="front"><span class="handle" aria-hidden="true"></span><span class="boxno">No. 103</span></div>
+  <div class="body">
+    <h2 id="h103">When Redfish isn't home, IPMI answers.</h2>
+    <p>Give a box both addresses. rackhands asks Redfish first and falls back to IPMI 2.0 (lanplus) when Redfish is unreachable, missing the feature, or answers 404, 501 or 503. It never falls back on a bad password, so a wrong credential is not hidden by trying again on another protocol. Older Supermicro and Dell boards, and cheap boards that only speak IPMI, give the same health, sensors, SEL, FRU inventory and power. Every result says which protocol answered.</p>
+    <pre class="term" tabindex="0"><span class="pr">$</span> rackhands --json inventory lab-x10 | jq '{via, fallback_reason}'
+{
+  "via": "ipmi (fallback)",
+  "fallback_reason": "redfish unreachable (connection refused)"
+}</pre>
+  </div>
+</section>
+
+<section class="drawer" aria-labelledby="h104">
+  <div class="front"><span class="handle" aria-hidden="true"></span><span class="boxno">No. 104</span></div>
+  <div class="body two">
+    <div>
+      <h2 id="h104">For agents: same binary, <code>rackhands mcp</code>.</h2>
+      <p>Read tools carry <code>readOnlyHint</code> and work out of the box: <code>get_health</code>, <code>get_sensors</code>, <code>get_event_log</code>, <code>get_inventory</code>, <code>get_firmware_inventory</code>, <code>get_boot_config</code>, <code>get_power_state</code>, <code>list_targets</code>. Dangerous tools exist only if you start the server with <code>--allow</code>. Even then, the first call returns a plan and a token. The second call needs that token, and the server's instructions tell the agent to get your yes first. If it reuses the token, changes the action, or waits two minutes, it is refused.</p>
+    </div>
+<pre class="term" tabindex="0">{"mcpServers": {"rackhands": {
+  "command": "rackhands",
+  "args": ["mcp"],
+  "env": {"BMC_PASSWORD": "…"}
+}}}
+
+<span class="pr">→</span> power_action {target: "db-01", action: "force-off"}
+<span class="pr">←</span> {"status": "confirmation_required",
+   "plan": {…}, "confirm_token": "rh1-…"}
+<span class="pr">→</span> power_action {…, confirm_token: "rh1-…"}
+<span class="pr">←</span> {"status": "done", "result": "accepted (HTTP 204)"}</pre>
+  </div>
+</section>
+
+<section class="drawer" aria-labelledby="h105">
+  <div class="front"><span class="handle" aria-hidden="true"></span><span class="boxno">No. 105</span></div>
+  <div class="body">
+    <h2 id="h105">Tested against a real Redfish service and a real IPMI BMC.</h2>
+    <p>Every push runs the binary against the <a href="https://github.com/DMTF/Redfish-Mockup-Server">DMTF Redfish-Mockup-Server</a>. It serves DMTF's own mockup plus Dell R750, HPE DL380, Lenovo SR650 V2 and Supermicro X11 mockups that carry each vendor's quirks. It also runs against OpenIPMI's <code>ipmi_sim</code> over a real lanplus session. CI checks vendor detection, health, logs and sensors, and every refusal path. It checks that a boot override PATCH persists, and that IPMI chassis power goes off and comes back on. It also drives the MCP server over stdio through the full plan → token → done flow.</p>
+  </div>
+</section>
+
+<section class="drawer" aria-labelledby="h106">
+  <div class="front"><span class="handle" aria-hidden="true"></span><span class="boxno">No. 106</span></div>
+  <div class="body">
+    <h2 id="h106">Install</h2>
+    <pre class="term" tabindex="0"><span class="pr">$</span> go install github.com/Blackman99/rackhands/cmd/rackhands@latest
+<span class="pr">#</span> or a single static binary for linux / macOS / windows (amd64, arm64):
+<span class="pr">#</span> https://github.com/Blackman99/rackhands/releases/latest
+<span class="pr">$</span> rackhands --host https://10.20.0.11 --user root health</pre>
+    <p><a href="docs/">Read the docs</a>: config file, every command, vendor notes, the safety model, MCP setup and exit codes.</p>
+  </div>
+</section>
+</main>
+
+<footer class="foot">
+  <p>rackhands is MIT licensed. <a href="https://github.com/Blackman99/rackhands">Source</a> · <a href="docs/">Docs</a> · <a href="https://github.com/Blackman99/rackhands/issues">Issues</a></p>
+</footer>
+<script src="app.js" defer></script>
+</body>
+</html>

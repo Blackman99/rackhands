@@ -763,7 +763,11 @@ func (r *Redfish) PlanPower(ctx context.Context, action string) (*Plan, error) {
 	}
 	body := map[string]any{"ResetType": rt}
 	cur := s.Str("PowerState")
-	sum := fmt.Sprintf("power %s %s (%s %s, ResetType=%s, currently %s)", action, r.target, r.prof.Vendor, r.bmcLabel(), rt, cur)
+	model := s.Str("Model")
+	if model == "" {
+		model = r.bmcLabel()
+	}
+	sum := fmt.Sprintf("power %s %s (%s %s, ResetType=%s, currently %s)", action, r.target, r.prof.Vendor, strings.TrimPrefix(model, r.prof.Vendor+" "), rt, cur)
 	return NewPlan(sum, "POST", target, body, cur, r.post(target, body)), nil
 }
 

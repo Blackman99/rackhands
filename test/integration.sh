@@ -20,7 +20,6 @@ diag() {
   [ -f "$WORK/inv.json" ] && { echo "== inv.json"; head -c 3000 "$WORK/inv.json"; }
 }
 fail() { echo "FAIL $*"; diag; exit 1; }
-trap 'rc=$?; [ $rc -ne 0 ] && diag' ERR
 expect() { local what=$1; shift; if "$@"; then ok "$what"; else fail "$what"; fi; }
 
 # --- Redfish mockup servers (DMTF reference implementation of a BMC)
@@ -59,6 +58,12 @@ targets:
 YAML
 export BMC_PASSWORD=secret
 R() { "$BIN" --config "$WORK/targets.yaml" "$@"; }
+
+# One IPMI round trip should take well under a second against a local simulator.
+t0=$(date +%s)
+RACKHANDS_IPMI_DEBUG=1 R power sim >"$WORK/ipmi-debug.log" 2>&1 || true
+t1=$(date +%s)
+if [ $((t1 - t0)) -gt 5 ]; then echo "SLOW IPMI round trip: $((t1 - t0))s"; grep -v '^\s*$' "$WORK/ipmi-debug.log" | tail -80; fi
 
 # --- reads, every vendor
 R --json inventory >"$WORK/inv.json" || fail "inventory over the whole fleet"

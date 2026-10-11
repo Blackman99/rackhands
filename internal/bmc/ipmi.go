@@ -3,6 +3,7 @@ package bmc
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -56,6 +57,9 @@ func (b *IPMI) conn(ctx context.Context) (*client.Client, error) {
 		c.WithInterface(client.InterfaceLanplus)
 	}
 	c.WithTimeout(b.timeout)
+	if os.Getenv("RACKHANDS_IPMI_DEBUG") != "" {
+		c.WithDebug(true)
+	}
 	if err := c.Connect(ctx); err != nil {
 		return nil, fmt.Errorf("ipmi connect %s:%d: %w", b.host, b.port, err)
 	}

@@ -604,7 +604,7 @@ func dangerous(ctx context.Context, a *app.App, o *opts, stdin io.Reader, stdout
 	if o.json {
 		return emit(stdout, map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res})
 	}
-	fmt.Fprintf(stdout, "DONE  %s\n", res)
+	fmt.Fprintf(stdout, "DONE  %s: %s\n", name, res)
 	return nil
 }
 

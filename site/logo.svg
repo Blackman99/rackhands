@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="rackhands: a 1U rack faceplate with two keyholes">
+  <rect x="18" y="140" width="476" height="232" fill="#c79a3b" stroke="#21180e" stroke-width="14"/>
+  <path d="M30 152h452" stroke="#e3c474" stroke-width="6"/>
+  <path d="M30 360h452" stroke="#9c7426" stroke-width="8"/>
+  <path d="M96 152v208M416 152v208" stroke="#9c7426" stroke-width="5"/>
+  <rect x="48" y="226" width="22" height="60" rx="11" fill="#21180e"/>
+  <rect x="442" y="226" width="22" height="60" rx="11" fill="#21180e"/>
+  <circle cx="200" cy="232" r="32" fill="#21180e"/>
+  <path d="M184 250h32l12 74h-56z" fill="#21180e"/>
+  <circle cx="312" cy="232" r="32" fill="#21180e"/>
+  <path d="M296 250h32l12 74h-56z" fill="#21180e"/>
+</svg>
