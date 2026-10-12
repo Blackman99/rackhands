@@ -37,6 +37,8 @@ rackhands: operation not allowed: "power" is off; start with --allow power (dang
 
 Targets live in `~/.config/rackhands/targets.yaml` ([example](examples/targets.yaml)). Use `--host https://bmc --user root` for a one-off.
 
+**TLS:** BMCs usually ship a self-signed certificate. `insecure: true` is the lazy default; prefer pinning the leaf SHA-256 with `tls_fingerprint:` (print it with `rackhands tls-fingerprint TARGET`) or a real `ca_file` with `insecure: false`. When `tls_fingerprint` is set it is the trust model for that target — a mismatch fails closed and does not fall through to insecure.
+
 **Dangerous operations** (`power`, `boot`, `bmc-reset`, `firmware`, `virtual-media`) need all of the following:
 - `--allow CLASS` when you start rackhands.
 - `allow: [CLASS]` on that target in the config.

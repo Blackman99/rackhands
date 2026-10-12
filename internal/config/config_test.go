@@ -83,3 +83,25 @@ func TestMissingDefaultFileIsEmpty(t *testing.T) {
 		t.Fatal("explicit missing file must error")
 	}
 }
+
+func TestTLSFingerprintConfig(t *testing.T) {
+	fp := "aabbccddeeff00112233445566778899aabbccddeeff00112233445566778899"
+	colon := "AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99:AA:BB:CC:DD:EE:FF:00:11:22:33:44:55:66:77:88:99"
+	p := write(t, "defaults:\n  tls_fingerprint: \""+colon+"\"\ntargets:\n  - {name: a, redfish: \"https://10.0.0.1\"}\n  - {name: b, redfish: \"https://10.0.0.2\", tls_fingerprint: \"sha256:"+fp+"\"}\n")
+	f, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, _ := f.Find("a")
+	if a.TLSFingerprint != fp {
+		t.Fatalf("defaults fingerprint not normalized: %q", a.TLSFingerprint)
+	}
+	b, _ := f.Find("b")
+	if b.TLSFingerprint != fp {
+		t.Fatalf("override not normalized: %q", b.TLSFingerprint)
+	}
+	bad := write(t, `targets: [{name: x, redfish: "https://10.0.0.1", tls_fingerprint: "deadbeef"}]`)
+	if _, err := Load(bad); err == nil {
+		t.Fatal("short fingerprint accepted")
+	}
+}

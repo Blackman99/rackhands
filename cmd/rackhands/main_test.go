@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -105,5 +107,25 @@ func TestParse(t *testing.T) {
 	}
 	if code, _, e := rh("--allow", "reboot", "targets"); code != 2 || !strings.Contains(e, "unknown operation class") {
 		t.Fatalf("%d %s", code, e)
+	}
+}
+
+func TestTLSFingerprintCLI(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(204)
+	}))
+	defer srv.Close()
+	code, out, errOut := rh("--host", srv.URL, "tls-fingerprint")
+	if code != 0 {
+		t.Fatalf("exit %d stderr=%s out=%s", code, errOut, out)
+	}
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	last := lines[len(lines)-1]
+	if !strings.Contains(out, "tls_fingerprint:") || len(last) != 64 {
+		t.Fatalf("expected 64-hex fingerprint line, got %q\nfull:\n%s", last, out)
+	}
+	code, out, errOut = rh("--host", srv.URL, "--json", "pin")
+	if code != 0 || !strings.Contains(out, `"tls_fingerprint"`) {
+		t.Fatalf("json pin: %d %s %s", code, out, errOut)
 	}
 }

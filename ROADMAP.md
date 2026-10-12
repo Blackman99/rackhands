@@ -8,7 +8,7 @@
 - CI against the DMTF Redfish-Mockup-Server (DMTF + four vendor mockups) and OpenIPMI `ipmi_sim`
 
 ## v0.2
-- TLS trust-on-first-use pinning for self-signed BMC certificates (`tls_fingerprint:`) instead of `insecure`
+- [x] TLS trust-on-first-use pinning for self-signed BMC certificates (`tls_fingerprint:`) instead of `insecure`
 - Task monitoring for firmware updates (poll the returned Task / Dell job until it completes)
 - Storage health (controllers, drives, volumes) in `health`
 - Homebrew tap and Scoop manifest

@@ -28,7 +28,8 @@ func Open(t *config.Target) (*Conn, error) {
 	c := &Conn{Name: t.Name, Allow: t.Allow}
 	if t.Redfish != "" {
 		cl, err := redfish.New(redfish.Options{BaseURL: t.Redfish, Username: t.Username, Password: pw,
-			Insecure: t.InsecureTLS(), CAFile: t.CAFile, Session: t.Session, Timeout: t.TimeoutDur()})
+			Insecure: t.InsecureTLS(), CAFile: t.CAFile, TLSFingerprint: t.TLSFingerprint,
+			Session: t.Session, Timeout: t.TimeoutDur()})
 		if err != nil {
 			return nil, err
 		}

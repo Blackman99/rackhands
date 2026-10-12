@@ -22,13 +22,14 @@ import (
 
 // Options configure a Client.
 type Options struct {
-	BaseURL  string // https://10.0.0.5 or 10.0.0.5:8443
-	Username string
-	Password string
-	Insecure bool   // skip TLS verification (self-signed BMC certs)
-	CAFile   string // PEM bundle to trust instead
-	Session  bool   // use SessionService (X-Auth-Token) instead of basic auth
-	Timeout  time.Duration
+	BaseURL        string // https://10.0.0.5 or 10.0.0.5:8443
+	Username       string
+	Password       string
+	Insecure       bool   // skip TLS verification (self-signed BMC certs)
+	CAFile         string // PEM bundle to trust instead
+	TLSFingerprint string // SHA-256 of leaf cert (hex / colon-hex / sha256:); pin wins over Insecure/CAFile
+	Session        bool   // use SessionService (X-Auth-Token) instead of basic auth
+	Timeout        time.Duration
 }
 
 // Client talks to one Redfish service.
@@ -78,17 +79,30 @@ func New(o Options) (*Client, error) {
 	if o.Timeout == 0 {
 		o.Timeout = 20 * time.Second
 	}
-	tlsCfg := &tls.Config{InsecureSkipVerify: o.Insecure} //nolint:gosec // opt-in for self-signed BMCs
-	if o.CAFile != "" {
-		pem, err := os.ReadFile(o.CAFile)
+	tlsCfg := &tls.Config{MinVersion: tls.VersionTLS12}
+	if o.TLSFingerprint != "" {
+		pin, err := NormalizeFingerprint(o.TLSFingerprint)
 		if err != nil {
 			return nil, err
 		}
-		pool := x509.NewCertPool()
-		if !pool.AppendCertsFromPEM(pem) {
-			return nil, fmt.Errorf("no certificates in %s", o.CAFile)
+		// Pin wins: only the leaf SHA-256 is trusted. InsecureSkipVerify is
+		// solely the hook so VerifyPeerCertificate runs without system CAs;
+		// a mismatch still fails closed (never falls through to insecure).
+		tlsCfg.InsecureSkipVerify = true //nolint:gosec // custom pin verifier enforces trust
+		tlsCfg.VerifyPeerCertificate = pinVerifier(pin)
+	} else {
+		tlsCfg.InsecureSkipVerify = o.Insecure //nolint:gosec // opt-in for self-signed BMCs
+		if o.CAFile != "" {
+			pem, err := os.ReadFile(o.CAFile)
+			if err != nil {
+				return nil, err
+			}
+			pool := x509.NewCertPool()
+			if !pool.AppendCertsFromPEM(pem) {
+				return nil, fmt.Errorf("no certificates in %s", o.CAFile)
+			}
+			tlsCfg.RootCAs = pool
 		}
-		tlsCfg.RootCAs = pool
 	}
 	tr := &http.Transport{
 		TLSClientConfig:     tlsCfg,

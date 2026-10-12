@@ -11,26 +11,28 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Blackman99/rackhands/internal/redfish"
 	"gopkg.in/yaml.v3"
 )
 
 // Target is one BMC.
 type Target struct {
-	Name         string   `yaml:"name"`
-	Redfish      string   `yaml:"redfish"`    // https://10.0.0.5 (empty = IPMI only)
-	IPMI         string   `yaml:"ipmi"`       // 10.0.0.5[:623] fallback (empty = none)
-	IPMILan15    bool     `yaml:"ipmi_lan15"` // IPMI 1.5 instead of 2.0 lanplus
-	Username     string   `yaml:"username"`
-	Password     string   `yaml:"password"` // discouraged; prefer password_env / password_file
-	PasswordEnv  string   `yaml:"password_env"`
-	PasswordFile string   `yaml:"password_file"`
-	Insecure     *bool    `yaml:"insecure"` // accept self-signed BMC certificates
-	CAFile       string   `yaml:"ca_file"`
-	Session      bool     `yaml:"session_auth"` // X-Auth-Token sessions instead of basic auth
-	Vendor       string   `yaml:"vendor"`       // auto|dell|hpe|lenovo|supermicro|generic
-	Allow        []string `yaml:"allow"`        // dangerous classes permitted on this target
-	Tags         []string `yaml:"tags"`
-	Timeout      string   `yaml:"timeout"`
+	Name           string   `yaml:"name"`
+	Redfish        string   `yaml:"redfish"`    // https://10.0.0.5 (empty = IPMI only)
+	IPMI           string   `yaml:"ipmi"`       // 10.0.0.5[:623] fallback (empty = none)
+	IPMILan15      bool     `yaml:"ipmi_lan15"` // IPMI 1.5 instead of 2.0 lanplus
+	Username       string   `yaml:"username"`
+	Password       string   `yaml:"password"` // discouraged; prefer password_env / password_file
+	PasswordEnv    string   `yaml:"password_env"`
+	PasswordFile   string   `yaml:"password_file"`
+	Insecure       *bool    `yaml:"insecure"` // accept self-signed BMC certificates
+	CAFile         string   `yaml:"ca_file"`
+	TLSFingerprint string   `yaml:"tls_fingerprint"` // SHA-256 of leaf cert; safer than insecure: true
+	Session        bool     `yaml:"session_auth"`    // X-Auth-Token sessions instead of basic auth
+	Vendor         string   `yaml:"vendor"`          // auto|dell|hpe|lenovo|supermicro|generic
+	Allow          []string `yaml:"allow"`           // dangerous classes permitted on this target
+	Tags           []string `yaml:"tags"`
+	Timeout        string   `yaml:"timeout"`
 }
 
 // File is the whole config.
@@ -89,6 +91,13 @@ func Load(path string) (*File, error) {
 		if err := ValidateClasses(t.Allow); err != nil {
 			return nil, fmt.Errorf("%s: target %q: %w", path, t.Name, err)
 		}
+		if t.TLSFingerprint != "" {
+			norm, err := redfish.NormalizeFingerprint(t.TLSFingerprint)
+			if err != nil {
+				return nil, fmt.Errorf("%s: target %q: %w", path, t.Name, err)
+			}
+			t.TLSFingerprint = norm
+		}
 	}
 	return &f, nil
 }
@@ -106,6 +115,9 @@ func (f *File) applyDefaults(t *Target) {
 	}
 	if t.CAFile == "" {
 		t.CAFile = d.CAFile
+	}
+	if t.TLSFingerprint == "" {
+		t.TLSFingerprint = d.TLSFingerprint
 	}
 	if !t.Session {
 		t.Session = d.Session
@@ -195,7 +207,9 @@ func (t *Target) Secret() (string, error) {
 }
 
 // InsecureTLS reports whether self-signed certs are accepted (default true:
-// almost every BMC ships one; set insecure: false with ca_file in production).
+// almost every BMC ships one). Prefer tls_fingerprint: (pin) or ca_file with
+// insecure: false in production. When tls_fingerprint is set, the Redfish
+// client pins the leaf SHA-256 and ignores this flag for trust decisions.
 func (t *Target) InsecureTLS() bool { return t.Insecure == nil || *t.Insecure }
 
 // TimeoutDur parses timeout (default 20s).

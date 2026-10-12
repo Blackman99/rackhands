@@ -3,8 +3,10 @@ defaults:
   username: rackhands-ro          # a read-only BMC account is enough for every read command
   password_env: BMC_PASSWORD      # or password_file: ~/.config/rackhands/bmc.pass
   timeout: 20s
-  # insecure: true is the default because BMCs ship self-signed certificates;
-  # set ca_file to verify them instead.
+  # insecure: true is the default because BMCs ship self-signed certificates.
+  # Prefer tls_fingerprint: (SHA-256 of the leaf cert) over insecure: true —
+  # get it with: rackhands tls-fingerprint TARGET
+  # Or set ca_file + insecure: false for a real PKI.
 
 targets:
   - name: db-01
@@ -22,6 +24,11 @@ targets:
     session_auth: true            # one session per run instead of Basic auth per request
     ca_file: /etc/ssl/bmc-ca.pem
     insecure: false
+
+  - name: lab-idrac
+    redfish: https://192.168.88.50
+    # Pin the self-signed leaf instead of insecure: true (pin wins over insecure/ca_file).
+    tls_fingerprint: "aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99:aa:bb:cc:dd:ee:ff:00:11:22:33:44:55:66:77:88:99"
 
   - name: lab-x10
     ipmi: 192.168.88.40           # pre-Redfish Supermicro X10: IPMI only

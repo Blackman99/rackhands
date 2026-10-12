@@ -24,6 +24,7 @@ import (
 	"github.com/Blackman99/rackhands/internal/bmc"
 	"github.com/Blackman99/rackhands/internal/config"
 	"github.com/Blackman99/rackhands/internal/mcpserver"
+	"github.com/Blackman99/rackhands/internal/redfish"
 	"github.com/Blackman99/rackhands/internal/safety"
 )
 
@@ -50,10 +51,15 @@ Dangerous (off by default; need --allow CLASS, the target's allow: list, and con
   rackhands firmware-update TARGET IMAGE_URL                                class: firmware
   rackhands vmedia TARGET insert ISO_URL | eject                            class: virtual-media
 
+TLS:
+  rackhands tls-fingerprint TARGET          print leaf cert SHA-256 to paste into tls_fingerprint:
+  rackhands pin TARGET                      alias for tls-fingerprint
+
 Agents:
   rackhands mcp [--allow CLASS,...]         MCP server on stdio (dangerous tools only if allowed)
 
 TARGET is a name from the config file, "all", or "tag:NAME". Default: all.
+For tls-fingerprint, TARGET may also be omitted when --host is set.
 
 Flags:
   --config FILE     targets file (default $RACKHANDS_CONFIG or ~/.config/rackhands/targets.yaml)
@@ -261,6 +267,8 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 		return err
 	}
 	switch cmd {
+	case "tls-fingerprint", "pin":
+		return tlsFingerprint(ctx, a, o, rest, stdout)
 	case "targets":
 		ts := a.Targets()
 		if o.json {
@@ -624,6 +632,47 @@ func dash(s string) string {
 		return "-"
 	}
 	return s
+}
+
+func tlsFingerprint(ctx context.Context, a *app.App, o *opts, rest []string, stdout io.Writer) error {
+	var addr string
+	var timeout time.Duration
+	switch {
+	case len(rest) == 1 && rest[0] != "all" && !strings.HasPrefix(rest[0], "tag:"):
+		t, err := a.One(rest[0])
+		if err != nil {
+			return err
+		}
+		if t.Redfish == "" {
+			return fmt.Errorf("target %q has no redfish: address", t.Name)
+		}
+		addr = t.Redfish
+		timeout = t.TimeoutDur()
+	case o.host != "":
+		addr = o.host
+		if o.timeout != "" {
+			if d, err := time.ParseDuration(o.timeout); err == nil {
+				timeout = d
+			}
+		}
+	case len(rest) == 0:
+		return errors.New("usage: rackhands tls-fingerprint TARGET  (or --host URL)")
+	default:
+		return errors.New("tls-fingerprint takes one named target (or --host)")
+	}
+	fp, err := redfish.FetchLeafFingerprint(ctx, addr, timeout)
+	if err != nil {
+		return err
+	}
+	if o.json {
+		return emit(stdout, map[string]string{
+			"address":               addr,
+			"tls_fingerprint":       fp,
+			"tls_fingerprint_colon": redfish.FormatFingerprint(fp),
+		})
+	}
+	fmt.Fprintf(stdout, "# paste into targets.yaml for this BMC:\n#   tls_fingerprint: %s\n%s\n", fp, fp)
+	return nil
 }
 
 func printVendors(w io.Writer, js bool) error {

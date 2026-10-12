@@ -86,8 +86,9 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <tr><td>ipmi</td><td><code>host[:port]</code> for IPMI 2.0 lanplus. With <code>redfish</code> set, this is the fallback.</td></tr>
 <tr><td>ipmi_lan15</td><td>Use IPMI 1.5 (<code>lan</code>) instead of lanplus, for very old BMCs.</td></tr>
 <tr><td>username, password, password_env, password_file</td><td>Credentials. Prefer <code>password_env</code> or <code>password_file</code>. A read-only BMC account is enough for every read command.</td></tr>
-<tr><td>insecure</td><td>Skip TLS verification. The default is <code>true</code> because BMCs ship self-signed certificates. Set <code>ca_file</code> and <code>insecure: false</code> to verify.</td></tr>
-<tr><td>ca_file</td><td>PEM bundle used to verify the BMC certificate.</td></tr>
+<tr><td>insecure</td><td>Skip TLS verification. The default is <code>true</code> because BMCs ship self-signed certificates. Prefer <code>tls_fingerprint</code> or <code>ca_file</code> with <code>insecure: false</code>.</td></tr>
+<tr><td>tls_fingerprint</td><td>SHA-256 of the BMC leaf certificate (hex, colon-hex, or <code>sha256:</code> prefix). Safer than <code>insecure: true</code>: the connection fails closed on mismatch. When set, the pin is the trust model for that target (it wins over <code>insecure</code> / <code>ca_file</code>). Print with <code>rackhands tls-fingerprint TARGET</code>.</td></tr>
+<tr><td>ca_file</td><td>PEM bundle used to verify the BMC certificate (proper PKI). Ignored for trust when <code>tls_fingerprint</code> is set.</td></tr>
 <tr><td>session_auth</td><td>Open one Redfish session per run (and delete it afterwards) instead of sending Basic auth on every request.</td></tr>
 <tr><td>vendor</td><td>Force a profile: <code>dell</code>, <code>hpe</code>, <code>lenovo</code>, <code>supermicro</code> or <code>generic</code>. It is normally auto-detected from the service root and manager.</td></tr>
 <tr><td>allow</td><td>Dangerous classes this machine may receive: <code>power</code>, <code>boot</code>, <code>bmc-reset</code>, <code>firmware</code>, <code>virtual-media</code> or <code>all</code>.</td></tr>
@@ -109,6 +110,7 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <tr><td>rackhands firmware T</td><td>Installed firmware versions. Staged and previous copies are hidden.</td></tr>
 <tr><td>rackhands boot T</td><td>Boot order (with display names), current override, and allowed override targets.</td></tr>
 <tr><td>rackhands vendors</td><td>The vendor quirks rackhands handles.</td></tr>
+<tr><td>rackhands tls-fingerprint T</td><td>Print the BMC leaf certificate SHA-256 (also <code>rackhands pin T</code>) so you can paste it into <code>tls_fingerprint:</code>. Read-only TLS probe; no BMC login.</td></tr>
 </tbody></table>
 
 <h2 id="danger">Dangerous operations</h2>
