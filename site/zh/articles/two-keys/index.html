@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>把 BMC 交给 AI agent，但不交出电源键 — rackhands</title>
+<meta name="description" content="rackhands 如何统一读取 iDRAC、iLO、XCC、Supermicro 和 Redfish BMC，回退到 IPMI，并用两把钥匙和一次性 MCP 令牌锁住电源、固件和启动操作。">
+<link rel="canonical" href="https://blackman99.github.io/rackhands/zh/articles/two-keys/">
+<link rel="alternate" hreflang="en" href="https://blackman99.github.io/rackhands/articles/two-keys/">
+<link rel="alternate" hreflang="zh-Hans" href="https://blackman99.github.io/rackhands/zh/articles/two-keys/">
+<meta name="theme-color" content="#c79a3b">
+<link rel="icon" href="../../../favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="rackhands">
+<meta property="og:url" content="https://blackman99.github.io/rackhands/zh/articles/two-keys/">
+<meta property="og:title" content="把 BMC 交给 AI agent，但不交出电源键 — rackhands">
+<meta property="og:description" content="rackhands 如何统一读取 iDRAC、iLO、XCC、Supermicro 和 Redfish BMC，回退到 IPMI，并用两把钥匙和一次性 MCP 令牌锁住电源、固件和启动操作。">
+<meta property="og:image" content="https://blackman99.github.io/rackhands/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blackman99.github.io/rackhands/og-image.png">
+<link rel="preload" href="../../../fonts/gloock-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../../../fonts/hanken-grotesk-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../../style.css">
+</head>
+<body class="docs">
+<a class="skip" href="#content">跳到正文</a>
+<header class="docbar">
+  <a class="mark" href="../../../"><img src="../../../logo.svg" width="56" height="56" alt=""> rackhands</a>
+  <span class="boxno">No. 107</span>
+  <a class="lang" href="https://blackman99.github.io/rackhands/articles/two-keys/" hreflang="en" lang="en">English</a>
+  <a href="https://github.com/Blackman99/rackhands">GitHub</a>
+</header>
+<div class="docgrid">
+<nav class="toc" aria-label="目录"><ol><li><a href="#why">问题在哪</a></li><li><a href="#keys">两把钥匙</a></li><li><a href="#token">MCP 确认令牌</a></li><li><a href="#quirks">厂商差异</a></li><li><a href="#ipmi">IPMI 回退</a></li><li><a href="#tests">没有硬件怎么测</a></li><li><a href="#try">上手</a></li></ol></nav>
+<main id="content" class="doc">
+<article>
+<h1>把服务器 BMC 交给 AI agent，但不把电源键交出去</h1>
+<p><em>2026-10-12 · rackhands 怎样读取 Dell iDRAC、HPE iLO、Lenovo XCC、Supermicro 和通用 Redfish，在需要时回退到 IPMI，并把危险操作锁在“两把钥匙加签字”之后。</em></p>
+
+<h2 id="why">问题在哪</h2>
+<p>BMC 是一台服务器权限最高的接口。告诉你风扇快坏了的那个 Redfish 端点，只要一个 POST，也能把数据库主机硬关机。把 AI agent 接进运维时，有用的是读：健康状态、传感器、硬件事件日志、固件版本。危险的能力却和读权限装在同一个账号里。直接给 agent 一个 <code>ipmitool</code> 或 <code>curl</code>，“看看风扇”和 <code>chassis power off</code> 之间就没有任何阻隔。</p>
+<p>第二个问题是厂商差异。“读取硬件事件日志”在每家 BMC 上都是不同的 URL、不同的严重级别字段。让 agent 现场拼 Redfish 请求，很容易出错；大多数脚本也一样。</p>
+<p>rackhands 是一个 Go 静态二进制，同时是 CLI 和 MCP 服务器。读操作在各厂商之间返回统一结构；所有可能让机器宕掉的操作都像金库里的保险箱：两把钥匙都转动、有人在登记簿上签字之前，箱门不开。</p>
+
+<h2 id="keys">两把钥匙，一次只开一个箱</h2>
+<p>危险操作分成几类：<code>power</code>、<code>boot</code>、<code>bmc-reset</code>、<code>firmware</code>、<code>virtual-media</code>，默认全部关闭。不带 <code>--allow</code> 时 CLI 以退出码 3 拒绝，MCP 服务器干脆不列出这些工具，agent 根本看不到。</p>
+<p>打开某一类需要两把相互独立的钥匙：</p>
+<ol>
+<li>运行时钥匙 <code>--allow power</code>（或 <code>RACKHANDS_ALLOW</code>），由启动进程的人决定；</li>
+<li>目标钥匙，即 <code>targets.yaml</code> 里该机器的 <code>allow: [power]</code>，由维护资产清单的人决定。</li>
+</ol>
+<p>两边都写了这一类才放行。目标名打错、或者没人给这台机器开过权限，都会在发出任何请求之前被拒绝。危险操作只接受一个具名目标：<code>all</code>、<code>tag:prod</code> 或多个名字都会被拒绝。批量电源操作是刻意不做的功能。</p>
+<pre class="term"><span class="pr">$</span> rackhands --allow power power db-01 force-off
+PLAN  power force-off db-01 (Dell PowerEdge R750, ResetType=ForceOff, currently On)
+      POST /redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset {"ResetType":"ForceOff"}
+      via redfish
+Type the target name (db-01) to confirm: db-01
+DONE  db-01: accepted (HTTP 204)</pre>
+<p>执行计划会列出确切的方法、路径、请求体、机型和当前状态。确认方式是输入机器名，而不是按 <kbd>y</kbd>。脚本里用 <code>--yes db-01</code>，名字同样必须匹配。每一次拒绝、计划、执行和失败都追加写入 JSONL 审计日志。</p>
+
+<h2 id="token">MCP 确认令牌：执行的就是展示过的</h2>
+<p>agent 没法在终端里输入机器名，“模型说它问过人了”也算不上控制手段。所以在 MCP 上，危险工具分两步。不带令牌调用时，只返回 <code>{"status":"confirmation_required","plan":…,"confirm_token":…}</code>，什么也不执行；服务器指令要求 agent 把计划展示给人并等待确认。带上令牌再次调用，才会执行。</p>
+<p>令牌经过 HMAC 签名，有效期两分钟，只能用一次，并绑定目标、类别、动作、参数以及承载请求的协议（Redfish 或 IPMI）。agent 如果把 <code>force-off</code> 改成 <code>cycle</code>、把目标换成 <code>db-02</code>、或者重放昨天的令牌，都会被拒绝，拒绝本身也会写入审计日志。读工具带 <code>readOnlyHint</code>，危险工具带 <code>destructiveHint</code>，会对破坏性工具弹确认的 MCP 客户端还能再加一道闸。</p>
+<p>推荐的部署很简单：给 agent 的配置使用 BMC 只读账号，给人用的高权限配置单独存放。两把钥匙是第二道防线，不是第一道。</p>
+
+<h2 id="quirks">会改变正确答案的厂商差异</h2>
+<p>Redfish 是标准，但每家厂商的理解都略有不同。下面这些差异都已编码进 rackhands，每一条都有 mockup 和单元测试：</p>
+<table class="ref"><thead><tr><th>厂商</th><th>差异</th></tr></thead><tbody>
+<tr><td>Dell iDRAC 8/9</td><td>硬件日志是 <code>Sel</code>，Lifecycle 日志另算。健康状态要加上 <code>DellSystem</code> 子系统汇总。固件清单里有 <code>Previous-</code>、<code>Available-</code> 副本，需要隐藏。</td></tr>
+<tr><td>HPE iLO 4/5/6</td><td>健康状态在 <code>Oem.Hpe</code>（iLO 4 为 <code>Oem.Hp</code>）的 <code>AggregateHealthStatus</code>。IML 严重级别在 <code>Oem.Hpe.Severity</code>，条目不一定内联。<code>Manager.Reset</code> 不能带 <code>ResetType</code>。未设置的阈值读出来是 0。虚拟介质走 OEM 动作。</td></tr>
+<tr><td>Lenovo XCC/XCC2</td><td>日志是 <code>PlatformLog</code>。传感器可能只在 <code>Sensors</code> 集合里。每个 PATCH 都必须带 <code>If-Match</code>，否则 XCC 拒绝。</td></tr>
+<tr><td>Supermicro X11+</td><td>日志是 manager 下的 <code>Log1</code>。部分 X11 主板的虚拟介质只有 OEM 接口，rackhands 会提前报告不支持，而不是做到一半失败。</td></tr>
+</tbody></table>
+<p>电源动作会映射到 BMC 在 <code>@Redfish.AllowableValues</code> 里声明的值，而不是假定所有 BMC 都接受 <code>GracefulRestart</code>。单位和严重级别统一（OK / Warning / Critical），事件时间统一为 UTC。</p>
+
+<h2 id="ipmi">IPMI 回退，以及什么时候不该回退</h2>
+<p>老主板和很多家庭实验室机器只支持 IPMI 2.0。rackhands 内置纯 Go 的 lanplus 客户端（不依赖 <code>ipmitool</code>），支持 FRU 资产信息、阈值传感器、SEL、机箱电源、启动设备和 BMC 冷重启。同时配置 <code>redfish:</code> 和 <code>ipmi:</code> 时先走 Redfish，服务不可达或返回 404、501、503 时回退到 IPMI。遇到 401、403 绝不回退：密码错了应该去修，而不是悄悄换个协议掩盖过去。结果中会标明 <code>via: ipmi (fallback)</code> 和回退原因。</p>
+<p>这周的一个教训：很多 IPMI 客户端建立 lanplus 会话前，会先向 BMC 询问支持哪些加密套件（Get Channel Cipher Suites）。有些 BMC 和某些 <code>ipmi_sim</code> 版本根本不回应这个命令，于是每个会话都要先卡满五次超时。现在 rackhands 直接提供几乎所有 BMC 都支持的套件 17 和 3，CI 也会断言 IPMI 会话能快速建立。</p>
+
+<h2 id="tests">没有机架，怎么测 BMC 工具</h2>
+<p>单元测试通过一个进程内 Redfish 服务器回放各厂商 mockup（Dell R750、HPE DL380 Gen10、Lenovo SR650 V2、Supermicro X11），并记录每一次写操作，因此可以断言“这个 PATCH 带了 If-Match”或“拒绝之后什么都没发出去”。CI 再用真实二进制去跑 DMTF Redfish-Mockup-Server（加载上述 mockup 和 DMTF 的 public-rackmount1），以及通过真实 RMCP+ 会话连接 OpenIPMI <code>ipmi_sim</code>。MCP 服务器则通过 stdio 走完整的 计划 → 令牌 → 执行 流程。新的厂商差异一律先加 mockup，再写代码，再补测试。</p>
+
+<h2 id="try">上手</h2>
+<pre class="term"><span class="pr">$</span> go install github.com/Blackman99/rackhands/cmd/rackhands@latest
+<span class="pr">$</span> rackhands --host https://10.20.0.11 --user root health</pre>
+<p>也可以从 <a href="https://github.com/Blackman99/rackhands/releases/latest">GitHub Releases</a> 下载 Linux、macOS、Windows 的二进制。<a href="../../../docs/">文档</a>（英文）涵盖 <code>targets.yaml</code>、全部命令和 MCP 配置。如果你的 BMC 表现不同，欢迎提 issue 并附上脱敏的 Redfish 抓包。刻意不做的事情：BIOS 设置、RAID、BMC 账号管理、KVM/SOL，以及批量危险操作（见 <a href="https://github.com/Blackman99/rackhands/blob/main/GOAL.md">GOAL.md</a>）。</p>
+
+</article>
+</main>
+</div>
+<footer class="foot"><p>rackhands 以 MIT 许可证开源。<a href="../../../">首页</a> · <a href="../../../docs/">文档</a> · <a href="https://github.com/Blackman99/rackhands">源码</a></p></footer>
+</body>
+</html>

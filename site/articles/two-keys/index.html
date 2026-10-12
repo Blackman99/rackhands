@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Giving an AI agent your BMCs without the power button — rackhands</title>
+<meta name="description" content="How rackhands reads iDRAC, iLO, XCC, Supermicro and Redfish BMCs, falls back to IPMI, and keeps power, firmware and boot behind two keys and a single-use MCP token.">
+<link rel="canonical" href="https://blackman99.github.io/rackhands/articles/two-keys/">
+<link rel="alternate" hreflang="en" href="https://blackman99.github.io/rackhands/articles/two-keys/">
+<link rel="alternate" hreflang="zh-Hans" href="https://blackman99.github.io/rackhands/zh/articles/two-keys/">
+<meta name="theme-color" content="#c79a3b">
+<link rel="icon" href="../../favicon.svg" type="image/svg+xml">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="rackhands">
+<meta property="og:url" content="https://blackman99.github.io/rackhands/articles/two-keys/">
+<meta property="og:title" content="Giving an AI agent your BMCs without the power button — rackhands">
+<meta property="og:description" content="How rackhands reads iDRAC, iLO, XCC, Supermicro and Redfish BMCs, falls back to IPMI, and keeps power, firmware and boot behind two keys and a single-use MCP token.">
+<meta property="og:image" content="https://blackman99.github.io/rackhands/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://blackman99.github.io/rackhands/og-image.png">
+<link rel="preload" href="../../fonts/gloock-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../../fonts/hanken-grotesk-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../../style.css">
+</head>
+<body class="docs">
+<a class="skip" href="#content">Skip to content</a>
+<header class="docbar">
+  <a class="mark" href="../../"><img src="../../logo.svg" width="56" height="56" alt=""> rackhands</a>
+  <span class="boxno">No. 107</span>
+  <a class="lang" href="https://blackman99.github.io/rackhands/zh/articles/two-keys/" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+  <a href="https://github.com/Blackman99/rackhands">GitHub</a>
+</header>
+<div class="docgrid">
+<nav class="toc" aria-label="Contents"><ol><li><a href="#why">The problem</a></li><li><a href="#keys">Two keys</a></li><li><a href="#token">The MCP token</a></li><li><a href="#quirks">Vendor quirks</a></li><li><a href="#ipmi">IPMI fallback</a></li><li><a href="#tests">Testing without hardware</a></li><li><a href="#try">Try it</a></li></ol></nav>
+<main id="content" class="doc">
+<article>
+<h1>Giving an AI agent your BMCs without giving it the power button</h1>
+<p><em>2026-10-12 · How rackhands reads Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro and generic Redfish, falls back to IPMI, and keeps destructive operations behind two keys and a signature.</em></p>
+
+<h2 id="why">The problem</h2>
+<p>A BMC is the most privileged interface a server has. The same Redfish endpoint that tells you a fan is failing will also, given one POST, hard power off a database host. When you wire an AI agent into operations, the useful part is the reads (health, sensors, the hardware event log, firmware versions). The dangerous part arrives in the same credential. Handing an agent <code>ipmitool</code> or <code>curl</code> means nothing stands between "check the fans" and <code>chassis power off</code>.</p>
+<p>The second problem is vendors. "Read the hardware event log" is a different URL and a different severity field on every BMC. An agent that improvises Redfish calls will get it subtly wrong, and so will most scripts.</p>
+<p>rackhands is one static Go binary that is both a CLI and an MCP server. It answers the reads with one normalised shape across vendors, and it treats every operation that can take a machine down as a box in a vault: closed unless two keys are turned and someone signs the register.</p>
+
+<h2 id="keys">Two keys, one box at a time</h2>
+<p>Dangerous operations are grouped into classes: <code>power</code>, <code>boot</code>, <code>bmc-reset</code>, <code>firmware</code>, <code>virtual-media</code>. Every class is off by default. With no <code>--allow</code>, the CLI refuses with exit code 3 and the MCP server does not even list the tools, so the agent never sees them.</p>
+<p>Turning a class on needs two independent keys:</p>
+<ol>
+<li>the runtime key, <code>--allow power</code> (or <code>RACKHANDS_ALLOW</code>), chosen by whoever starts the process;</li>
+<li>the per-target key, <code>allow: [power]</code> on that machine in <code>targets.yaml</code>, chosen by whoever owns the inventory.</li>
+</ol>
+<p>Both must name the class. A typo in the target name, or a machine nobody opened, is refused before anything is sent. Dangerous operations also take exactly one named target: <code>all</code>, <code>tag:prod</code> or a list of names are rejected. Fan-out of power actions is a deliberate non-feature.</p>
+<pre class="term"><span class="pr">$</span> rackhands --allow power power db-01 force-off
+PLAN  power force-off db-01 (Dell PowerEdge R750, ResetType=ForceOff, currently On)
+      POST /redfish/v1/Systems/System.Embedded.1/Actions/ComputerSystem.Reset {"ResetType":"ForceOff"}
+      via redfish
+Type the target name (db-01) to confirm: db-01
+DONE  db-01: accepted (HTTP 204)</pre>
+<p>The plan shows the exact method, path and body, the model and the current state. You confirm by typing the machine's name, not by pressing <kbd>y</kbd>. Scripts pass <code>--yes db-01</code>, which must also match. Every refusal, plan, execution and failure is appended to a JSONL audit log.</p>
+
+<h2 id="token">The MCP token: what runs is what was shown</h2>
+<p>An agent can't type a name into a terminal, and "the model promised it asked the human" is not a control. So over MCP a dangerous tool has two phases. Called without a token, it returns <code>{"status":"confirmation_required","plan":…,"confirm_token":…}</code> and does nothing. The server instructions tell the agent to show the plan and wait for a human yes. Called again with the token, it executes.</p>
+<p>The token is HMAC-signed, valid for two minutes and usable once. It is bound to the target, class, action, arguments and the protocol (Redfish or IPMI) that will carry the request. If the agent changes <code>force-off</code> to <code>cycle</code>, retargets <code>db-02</code>, or replays yesterday's token, it is rejected and the rejection is audited. Read tools carry <code>readOnlyHint</code> and dangerous ones <code>destructiveHint</code>, so MCP clients that prompt on destructive tools add a third gate on top.</p>
+<p>The recommended setup is plain: give the agent a config that uses a read-only BMC account, and keep a separate, privileged config for humans. The two-key model is the second line of defence, not the first.</p>
+
+<h2 id="quirks">Vendor quirks that change the right answer</h2>
+<p>Redfish is a standard, and every vendor reads it a little differently. These are the differences rackhands encodes, each backed by a mockup and a unit test:</p>
+<table class="ref"><thead><tr><th>Vendor</th><th>What differs</th></tr></thead><tbody>
+<tr><td>Dell iDRAC 8/9</td><td>The hardware log is <code>Sel</code>; Lifecycle is separate. Health adds the <code>DellSystem</code> subsystem rollups. Firmware inventory lists <code>Previous-</code> and <code>Available-</code> copies that must be hidden.</td></tr>
+<tr><td>HPE iLO 4/5/6</td><td>Health is <code>AggregateHealthStatus</code> under <code>Oem.Hpe</code> (<code>Oem.Hp</code> on iLO 4). IML severity lives in <code>Oem.Hpe.Severity</code> and entries are not always inlined. <code>Manager.Reset</code> wants no <code>ResetType</code>. Unset thresholds read as 0. Virtual media uses OEM actions.</td></tr>
+<tr><td>Lenovo XCC/XCC2</td><td>The log is <code>PlatformLog</code>. Sensors may be only in the <code>Sensors</code> collection. Every PATCH needs <code>If-Match</code>, or XCC rejects it.</td></tr>
+<tr><td>Supermicro X11+</td><td>The log is <code>Log1</code> on the manager. Some X11 boards have OEM-only virtual media, reported as unsupported up front rather than failing halfway.</td></tr>
+</tbody></table>
+<p>Power actions are mapped to whatever the BMC lists in <code>@Redfish.AllowableValues</code> instead of assuming every BMC accepts <code>GracefulRestart</code>. Units and severities are normalised (OK / Warning / Critical), and event times are UTC.</p>
+
+<h2 id="ipmi">IPMI fallback, and when not to fall back</h2>
+<p>Older boards and many homelab machines only speak IPMI 2.0. rackhands carries a pure-Go lanplus client (no <code>ipmitool</code> dependency) for FRU inventory, threshold sensors, SEL, chassis power, boot device and BMC cold reset. With both <code>redfish:</code> and <code>ipmi:</code> configured it tries Redfish first and falls back when the service is unreachable or answers 404, 501 or 503. It never falls back on 401 or 403: a wrong password should be fixed, not hidden by quietly trying a second protocol. Results say <code>via: ipmi (fallback)</code> with the reason.</p>
+<p>One lesson from this week: many IPMI clients start a lanplus session by asking the BMC which cipher suites it supports (Get Channel Cipher Suites). Some BMCs, and some <code>ipmi_sim</code> builds, never answer that command, so every session stalled for five timeouts before falling through. rackhands now offers suites 17 and 3 directly, which practically every BMC supports, and CI asserts that an IPMI session opens quickly.</p>
+
+<h2 id="tests">Testing a BMC tool without a rack</h2>
+<p>Unit tests replay vendor mockups (Dell R750, HPE DL380 Gen10, Lenovo SR650 V2, Supermicro X11) through an in-process Redfish server that records every write, so a test can assert "this PATCH carried If-Match" or "nothing was sent after the refusal". CI then runs the real binary against DMTF's Redfish-Mockup-Server serving those mockups plus DMTF's public-rackmount1, and against OpenIPMI <code>ipmi_sim</code> over a real RMCP+ session. The MCP server is driven over stdio through the full plan → token → done sequence. New vendor quirks are added as mockups first, then code, then a test.</p>
+
+<h2 id="try">Try it</h2>
+<pre class="term"><span class="pr">$</span> go install github.com/Blackman99/rackhands/cmd/rackhands@latest
+<span class="pr">$</span> rackhands --host https://10.20.0.11 --user root health</pre>
+<p>Or download a release binary for linux, macOS or Windows from <a href="https://github.com/Blackman99/rackhands/releases/latest">GitHub Releases</a>. The <a href="../../docs/">docs</a> cover <code>targets.yaml</code>, every command and the MCP setup. If your BMC behaves differently, open an issue with an anonymised Redfish capture. Out of scope by design: BIOS settings, RAID, BMC accounts, KVM/SOL and fleet-wide dangerous operations (<a href="https://github.com/Blackman99/rackhands/blob/main/GOAL.md">GOAL.md</a>).</p>
+
+</article>
+</main>
+</div>
+<footer class="foot"><p>rackhands is MIT licensed. <a href="../../">Home</a> · <a href="../../docs/">Docs</a> · <a href="https://github.com/Blackman99/rackhands">Source</a></p></footer>
+</body>
+</html>
