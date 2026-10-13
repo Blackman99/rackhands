@@ -102,7 +102,7 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <thead><tr><th scope="col">Command</th><th scope="col">What you get</th></tr></thead>
 <tbody>
 <tr><td>rackhands targets</td><td>Configured BMCs, addresses, tags and the dangerous classes each one effectively has enabled right now.</td></tr>
-<tr><td>rackhands inventory [T…]</td><td>Vendor, model, serial, BIOS and BMC firmware, CPU and memory summary, power state.</td></tr>
+<tr><td>rackhands inventory [T…]</td><td>Vendor, model, serial, BIOS and BMC firmware, CPU and memory summary, power state, and the effective privilege of the account rackhands logs in with (see <a href="#readonly">read-only account</a>).</td></tr>
 <tr><td>rackhands health [T…]</td><td>Overall OK / Warning / Critical plus every component that is not OK. It uses vendor rollups where they exist (iDRAC subsystem rollups, iLO AggregateHealthStatus), and exits 1 if anything is unhealthy.</td></tr>
 <tr><td>rackhands power [T…]</td><td>Power state.</td></tr>
 <tr><td>rackhands sensors T [--kind K] [--problems]</td><td>Temperatures, fans, voltages, PSUs and power draw, with the critical threshold and health. K is one of <code>temperature</code>, <code>fan</code>, <code>voltage</code>, <code>psu</code>, <code>power</code>.</td></tr>
@@ -139,7 +139,12 @@ DONE  db-01: accepted (HTTP 204)</pre>
 <li><strong>Confirmation.</strong> On the CLI you type the name, or pass <code>--yes NAME</code>. With no terminal and no <code>--yes</code>, rackhands refuses. Over MCP the first call returns the plan and a token. The token is HMAC-signed, valid for 2 minutes and usable once. It is bound to the target, class, action, arguments and the protocol that will carry the request.</li>
 <li><strong>Audit.</strong> Every refusal, plan, rejected token, execution and failure is appended to a JSONL file.</li>
 </ol>
-<p>Recommended setup: give agents a read-only BMC account, and keep a separate, privileged config for humans.</p>
+<h3 id="readonly">Defence in depth: a read-only BMC account</h3>
+<p><strong>Give agents a read-only BMC account, and keep a separate, privileged config for humans.</strong> The gate above is enforced by rackhands. The strongest guarantee is enforced by the BMC: an account with the Redfish <code>ReadOnly</code> role (on iLO, an account without the Virtual Power and Reset, iLO Config, Virtual Media and Host BIOS privileges) or the IPMI <code>User</code> privilege cannot power anything off, whatever program holds the password. Every read command works with such an account.</p>
+<p><code>rackhands inventory</code> and the MCP <code>get_inventory</code> tool report the effective privilege of the account each target logs in with, under <code>account</code>: <code>role</code>, <code>can_control</code>, <code>privileges</code> and where it came from. Over Redfish rackhands finds its own user in <code>AccountService/Accounts</code> and reads <code>RoleId</code> and the role's privileges, or the iLO <code>Oem.Hpe.Privileges</code> flags. Over IPMI it uses Get Session Info and Get User Access, and a read-only IPMI account that is refused an Administrator session gets a User session instead. When a target has no dangerous <code>allow:</code> classes but its account could power it off, rackhands adds a <code>warning</code> (and prints <code>WARN</code> on stderr). This is detection only: rackhands never changes BMC accounts. When the BMC hides AccountService from the account, the role is <code>Unknown</code>.</p>
+<pre class="term"><span class="pr">$</span> rackhands --json inventory x11 | jq '.[0].data.account'
+{"user": "ADMIN", "role": "Administrator", "can_control": true,
+ "warning": "logs in as Administrator, which can power off or reconfigure this machine, but no dangerous class is allowed for it; use a read-only BMC account (Redfish ReadOnly role, IPMI User privilege)", …}</pre>
 
 <h2 id="mcp">MCP server</h2>
 <pre class="term">{"mcpServers": {"rackhands": {
@@ -147,6 +152,7 @@ DONE  db-01: accepted (HTTP 204)</pre>
   "args": ["mcp"],
   "env": {"BMC_PASSWORD": "…"}
 }}}</pre>
+<p><strong>Point the MCP server at a config whose BMC accounts are read-only</strong> (Redfish <code>ReadOnly</code>, IPMI <code>User</code>); <code>get_inventory</code> shows each account's effective role and warns about over-privileged ones (<a href="#readonly">details</a>).</p>
 <p>Add <code>"--allow", "power"</code> to <code>args</code> to expose <code>power_action</code>, and nothing else. Use <code>--config</code> to point at a specific targets file.</p>
 <table class="ref">
 <thead><tr><th scope="col">Tool</th><th scope="col">Arguments</th></tr></thead>

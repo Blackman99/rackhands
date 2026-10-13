@@ -1,6 +1,9 @@
 {
   "@odata.id": "/redfish/v1/",
   "@odata.type": "#ServiceRoot.v1_15_0.ServiceRoot",
+  "AccountService": {
+    "@odata.id": "/redfish/v1/AccountService"
+  },
   "Chassis": {
     "@odata.id": "/redfish/v1/Chassis"
   },

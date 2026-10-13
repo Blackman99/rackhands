@@ -1,0 +1,9 @@
+{
+  "@odata.id": "/redfish/v1/AccountService/Roles/None",
+  "@odata.type": "#Role.v1_3_1.Role",
+  "AssignedPrivileges": [],
+  "Id": "None",
+  "IsPredefined": false,
+  "Name": "None",
+  "RoleId": "None"
+}

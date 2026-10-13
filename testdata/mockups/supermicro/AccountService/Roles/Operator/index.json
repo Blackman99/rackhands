@@ -1,0 +1,13 @@
+{
+  "@odata.id": "/redfish/v1/AccountService/Roles/Operator",
+  "@odata.type": "#Role.v1_3_1.Role",
+  "AssignedPrivileges": [
+    "Login",
+    "ConfigureSelf",
+    "ConfigureComponents"
+  ],
+  "Id": "Operator",
+  "IsPredefined": true,
+  "Name": "Operator",
+  "RoleId": "Operator"
+}

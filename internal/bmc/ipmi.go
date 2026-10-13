@@ -2,6 +2,7 @@ package bmc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -47,10 +48,45 @@ func (b *IPMI) conn(ctx context.Context) (*client.Client, error) {
 	if b.c != nil {
 		return b.c, nil
 	}
+	var last error
+	for _, lvl := range sessionLevels {
+		c, err := b.dial(ctx, lvl)
+		if err == nil {
+			b.c = c
+			return c, nil
+		}
+		last = err
+		if !roleRejected(err) {
+			break
+		}
+	}
+	return nil, last
+}
+
+// sessionLevels are tried in order: a read-only (User) account is refused an
+// Administrator session at RAKP time, so step down instead of failing.
+var sessionLevels = []types.PrivilegeLevel{types.PrivilegeLevelAdministrator, types.PrivilegeLevelOperator, types.PrivilegeLevelUser}
+
+// roleRejected: the BMC refused the requested role (not the password).
+func roleRejected(err error) bool {
+	var se *types.RmcpStatusError
+	if !errors.As(err, &se) {
+		return false
+	}
+	switch se.StatusCode() {
+	case types.RmcpStatusCodeInvalidRole, types.RmcpStatusCodeUnauthorizedRoleOfPriLevel,
+		types.RmcpStatusCodeNoResToCreateSessAtRole, types.RmcpStatusCodeUnauthorizedName:
+		return true
+	}
+	return false
+}
+
+func (b *IPMI) dial(ctx context.Context, lvl types.PrivilegeLevel) (*client.Client, error) {
 	c, err := client.NewClient(b.host, b.port, b.user, b.pass)
 	if err != nil {
 		return nil, err
 	}
+	c.WithMaxPrivilegeLevel(lvl)
 	if b.lan15 {
 		c.WithInterface(client.InterfaceLan)
 	} else {
@@ -67,7 +103,6 @@ func (b *IPMI) conn(ctx context.Context) (*client.Client, error) {
 	if err := c.Connect(ctx); err != nil {
 		return nil, fmt.Errorf("ipmi connect %s:%d: %w", b.host, b.port, err)
 	}
-	b.c = c
 	return c, nil
 }
 

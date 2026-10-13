@@ -49,6 +49,16 @@ Every plan and execution is appended to an audit log. `--dry-run` shows the exac
 
 **For agents:** `rackhands mcp` is an MCP server on stdio. It is read-only by default. Dangerous tools are not even listed unless their class is allowed.
 
+> **Defence in depth: give the agent a read-only BMC account.** rackhands' gate lives in rackhands. The strongest guarantee lives in the BMC: an account with the Redfish `ReadOnly` role (iLO: no Virtual Power and Reset / iLO Config privileges) or IPMI `User` privilege cannot power anything off, whatever runs with it. Every read command works with such an account. Keep a separate, privileged config for humans. `rackhands inventory` (and the MCP `get_inventory` tool) shows the effective privilege of the account each target logs in with, read-only, and warns when a target with no dangerous `allow:` classes logs in as Operator or Administrator:
+>
+> ```console
+> $ rackhands inventory
+> TARGET  VIA      VENDOR      …  POWER  ACCOUNT
+> db-01   redfish  Dell        …  On     rackhands-ro (ReadOnly)
+> x11     redfish  Supermicro  …  On     ADMIN (Administrator, can power off)
+> WARN  x11: logs in as Administrator, which can power off or reconfigure this machine, but no dangerous class is allowed for it; use a read-only BMC account (Redfish ReadOnly role, IPMI User privilege)
+> ```
+
 ```json
 {"mcpServers": {"rackhands": {"command": "rackhands", "args": ["mcp"], "env": {"BMC_PASSWORD": "…"}}}}
 ```

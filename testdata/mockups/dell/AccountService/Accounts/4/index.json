@@ -1,0 +1,15 @@
+{
+  "@odata.id": "/redfish/v1/AccountService/Accounts/4",
+  "@odata.type": "#ManagerAccount.v1_10_0.ManagerAccount",
+  "Enabled": true,
+  "Id": "4",
+  "Links": {
+    "Role": {
+      "@odata.id": "/redfish/v1/AccountService/Roles/ReadOnly"
+    }
+  },
+  "Locked": false,
+  "Name": "User Account",
+  "RoleId": "ReadOnly",
+  "UserName": "agent"
+}
