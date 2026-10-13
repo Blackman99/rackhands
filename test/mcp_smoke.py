@@ -58,6 +58,10 @@ overall = {r["target"]: (r.get("data") or {}).get("overall") for r in out["resul
 check(overall.get("r750") == "Critical" and overall.get("sr650") == "OK", f"fleet health over MCP {overall}")
 err, out, _ = s.tool("get_event_log", {"target": "dl380", "min_severity": "Critical"})
 check(not err and "Fan Failure" in json.dumps(out), "iLO IML via MCP")
+err, out, _ = s.tool("get_inventory", {"targets": ["x11", "sr650"]})
+acct = {r["target"]: (r.get("data") or {}).get("account") or {} for r in out["results"]}
+check(acct["x11"].get("role") == "Operator" and acct["x11"].get("warning") and acct["sr650"].get("role") == "ReadOnly"
+      and not acct["sr650"].get("warning"), f"get_inventory reports account privilege and warns {acct}")
 s.close()
 
 s = Session("--allow", "power")

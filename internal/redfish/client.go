@@ -116,6 +116,9 @@ func New(o Options) (*Client, error) {
 // Host returns host[:port] of the service.
 func (c *Client) Host() string { return c.base.Host }
 
+// Username is the configured login (used to find our own account).
+func (c *Client) Username() string { return c.opt.Username }
+
 func (c *Client) url(path string) string {
 	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
 		return path

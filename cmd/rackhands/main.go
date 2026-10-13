@@ -286,7 +286,7 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 		return tw.Flush()
 	case "inventory":
 		res, err := a.Fleet(ctx, rest, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
-			return bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.Inventory, error) { return b.Inventory(ctx) })
+			return bmc.InventoryWithAccount(ctx, c)
 		})
 		if err != nil {
 			return err
@@ -298,7 +298,8 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 			return fleetErr(res)
 		}
 		tw := tabwriter.NewWriter(stdout, 0, 2, 2, ' ', 0)
-		fmt.Fprintln(tw, "TARGET\tVIA\tVENDOR\tMODEL\tSERIAL\tBIOS\tBMC\tCPU\tMEM\tPOWER")
+		fmt.Fprintln(tw, "TARGET\tVIA\tVENDOR\tMODEL\tSERIAL\tBIOS\tBMC\tCPU\tMEM\tPOWER\tACCOUNT")
+		var warns []string
 		for _, r := range res {
 			if r.Error != "" {
 				fmt.Fprintf(tw, "%s\t%s\tERROR: %s\n", r.Target, dash(r.Via), r.Error)
@@ -313,11 +314,17 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 			if inv.MemoryGiB > 0 {
 				mem = fmt.Sprintf("%g GiB", inv.MemoryGiB)
 			}
-			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Target, r.Via, inv.Vendor, dash(inv.Model), dash(inv.Serial), dash(inv.BIOS),
-				dash(bmcLabel(inv)), cpu, mem, dash(inv.PowerState))
+			fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", r.Target, r.Via, inv.Vendor, dash(inv.Model), dash(inv.Serial), dash(inv.BIOS),
+				dash(bmcLabel(inv)), cpu, mem, dash(inv.PowerState), accountLabel(inv.Account))
+			if inv.Account != nil && inv.Account.Warning != "" {
+				warns = append(warns, fmt.Sprintf("WARN  %s: %s", r.Target, inv.Account.Warning))
+			}
 		}
 		if err := tw.Flush(); err != nil {
 			return err
+		}
+		for _, w := range warns {
+			fmt.Fprintln(stderr, w)
 		}
 		return fleetErr(res)
 	case "health":
@@ -534,6 +541,21 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 		return srv.Run(ctx, &mcp.StdioTransport{})
 	}
 	return fmt.Errorf("unknown command %q (see rackhands help)", cmd)
+}
+
+// accountLabel: "admin (Administrator, can power off)", "agent (ReadOnly)".
+func accountLabel(a *bmc.Account) string {
+	if a == nil {
+		return "-"
+	}
+	role := a.Role
+	if a.CanControl != nil && *a.CanControl {
+		role += ", can power off"
+	}
+	if a.User == "" {
+		return role
+	}
+	return a.User + " (" + role + ")"
 }
 
 func bmcLabel(inv *bmc.Inventory) string {

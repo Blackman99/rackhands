@@ -121,9 +121,9 @@ func New(a *app.App, version string) *mcp.Server {
 		func(context.Context, *mcp.CallToolRequest, struct{}) (*mcp.CallToolResult, any, error) {
 			return nil, map[string]any{"targets": a.Targets()}, nil
 		})
-	mcp.AddTool(s, &mcp.Tool{Name: "get_inventory", Description: "Vendor, model, serial, BIOS and BMC firmware, CPU/memory summary and power state for one or many servers.", Annotations: ro("Server inventory")},
+	mcp.AddTool(s, &mcp.Tool{Name: "get_inventory", Description: "Vendor, model, serial, BIOS and BMC firmware, CPU/memory summary and power state for one or many servers, plus the effective privilege of the BMC account rackhands logs in with (account.role, account.can_control) and a warning when a target with no dangerous classes enabled uses an account that could power it off.", Annotations: ro("Server inventory")},
 		fleet(a, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
-			return bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.Inventory, error) { return b.Inventory(ctx) })
+			return bmc.InventoryWithAccount(ctx, c)
 		}))
 	mcp.AddTool(s, &mcp.Tool{Name: "get_health", Description: "Overall health (OK/Warning/Critical) and every component that is not OK, using vendor rollups (iDRAC, iLO) where available.", Annotations: ro("Server health")},
 		fleet(a, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {

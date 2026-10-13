@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/AccountService",
+  "@odata.type": "#AccountService.v1_12_0.AccountService",
+  "Accounts": {
+    "@odata.id": "/redfish/v1/AccountService/Accounts"
+  },
+  "Name": "Account Service",
+  "Roles": {
+    "@odata.id": "/redfish/v1/AccountService/Roles"
+  }
+}

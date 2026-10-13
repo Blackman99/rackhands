@@ -54,11 +54,44 @@ BOOT_TARGETS = ["None", "Pxe", "Cd", "Usb", "Hdd", "BiosSetup", "Utilities", "Ue
 def common_root(m, vendor, product, oem, extra=None):
     root = {"Name": "Root Service", "RedfishVersion": "1.17.0", "Vendor": vendor, "Product": product,
             "Systems": ref("/Systems"), "Chassis": ref("/Chassis"), "Managers": ref("/Managers"),
-            "UpdateService": ref("/UpdateService"), "SessionService": ref("/SessionService"), "Oem": oem}
+            "UpdateService": ref("/UpdateService"), "SessionService": ref("/SessionService"),
+            "AccountService": ref("/AccountService"), "Oem": oem}
     root.update(extra or {})
     m.put("", root, "#ServiceRoot.v1_15_0.ServiceRoot")
     m.coll("/SessionService/Sessions", [], "Sessions", "#SessionCollection.SessionCollection")
     m.put("/SessionService", {"Name": "Session Service", "Sessions": ref("/SessionService/Sessions")}, "#SessionService.v1_1_8.SessionService")
+
+
+STD_ROLES = {
+    "Administrator": ["Login", "ConfigureManager", "ConfigureUsers", "ConfigureSelf", "ConfigureComponents"],
+    "Operator": ["Login", "ConfigureSelf", "ConfigureComponents"],
+    "ReadOnly": ["Login", "ConfigureSelf"],
+}
+
+
+def accounts(m, accts, roles=None, account_path="/AccountService/Accounts"):
+    """AccountService with accounts [(id, username, role_id or None, oem or None)].
+    Roles default to the three standard Redfish roles; extra/custom roles can be
+    passed as {id: [privileges]}. rackhands only ever reads these."""
+    rs = dict(STD_ROLES)
+    rs.update(roles or {})
+    members = []
+    for aid, user, role, oem in accts:
+        a = {"Id": aid, "Name": "User Account", "UserName": user, "Enabled": bool(user), "Locked": False}
+        if role is not None:
+            a["RoleId"] = role
+            a["Links"] = {"Role": ref("/AccountService/Roles/" + role)}
+        if oem:
+            a["Oem"] = oem
+        m.put(account_path + "/" + aid, a, "#ManagerAccount.v1_10_0.ManagerAccount")
+        members.append(account_path + "/" + aid)
+    m.coll(account_path, members, "Accounts", "#ManagerAccountCollection.ManagerAccountCollection")
+    for rid, privs in rs.items():
+        m.put("/AccountService/Roles/" + rid, {"Id": rid, "Name": rid, "RoleId": rid, "AssignedPrivileges": privs,
+                                              "IsPredefined": rid in STD_ROLES}, "#Role.v1_3_1.Role")
+    m.coll("/AccountService/Roles", ["/AccountService/Roles/" + r for r in rs], "Roles", "#RoleCollection.RoleCollection")
+    m.put("/AccountService", {"Name": "Account Service", "Accounts": ref(account_path), "Roles": ref("/AccountService/Roles")},
+          "#AccountService.v1_12_0.AccountService")
 
 
 def log_entries(m, path, entries, inline=True):
@@ -184,6 +217,9 @@ def dell():
         {"Id": "Installed-108255-22.31.6__NIC.Embedded.1-1-1", "Name": "Broadcom Gigabit Ethernet BCM5720", "Version": "22.31.6", "Updateable": True},
         {"Id": "Installed-0-00.3D.69__PSU.Slot.1", "Name": "PS1 Power Supply", "Version": "00.3D.69", "Updateable": True},
     ])
+    # iDRAC: 16 fixed slots, slot 1 is disabled and nameless; integration logs in as "admin"
+    accounts(m, [("1", "", "None", None), ("2", "root", "Administrator", None), ("3", "admin", "Administrator", None),
+                 ("4", "agent", "ReadOnly", None)], roles={"None": []})
     return m
 
 
@@ -258,6 +294,12 @@ def hpe():
         {"Id": "4", "Name": "Server Platform Services (SPS) Firmware", "Version": "6.1.4.47", "Updateable": False},
         {"Id": "5", "Name": "HPE MR416i-a Gen10+", "Version": "52.24.3-4948", "Updateable": True},
     ])
+    # iLO 5: no RoleId on older firmware; privileges are Oem.Hpe.Privileges booleans
+    def priv(power, cfg, users):
+        return {"Hpe": {"LoginName": "", "Privileges": {"LoginPriv": True, "RemoteConsolePriv": cfg, "VirtualMediaPriv": cfg,
+                "VirtualPowerAndResetPriv": power, "iLOConfigPriv": cfg, "UserConfigPriv": users, "HostBIOSConfigPriv": cfg}}}
+    accounts(m, [("1", "Administrator", None, priv(True, True, True)), ("2", "admin", None, priv(True, True, True)),
+                 ("3", "monitor", None, priv(False, False, False)), ("4", "ops", None, priv(True, False, False))])
     return m
 
 
@@ -321,6 +363,9 @@ def lenovo():
         {"Id": "UEFI", "Name": "UEFI", "Version": "AFE128K-1.80", "Updateable": True},
         {"Id": "LXPM", "Name": "LXPM Diagnostic Software", "Version": "PDL146M-3.30", "Updateable": True},
     ])
+    # XCC: custom roles (CustomRoleN) carry their own privilege list; integration's "admin" is read-only here
+    accounts(m, [("1", "USERID", "Administrator", None), ("2", "admin", "ReadOnly", None), ("3", "fanwatch", "CustomRole1", None)],
+             roles={"CustomRole1": ["Login", "ConfigureComponents"]})
     return m
 
 
@@ -369,6 +414,8 @@ def supermicro():
         {"Id": "BMC", "Name": "BMC Firmware", "Version": "01.73.12", "Updateable": True},
         {"Id": "BIOS", "Name": "BIOS", "Version": "4.0", "Updateable": True},
     ], simple_update=False)
+    # Supermicro: integration's "admin" is an Operator, which can power the box off
+    accounts(m, [("2", "ADMIN", "Administrator", None), ("3", "admin", "Operator", None)])
     return m
 
 

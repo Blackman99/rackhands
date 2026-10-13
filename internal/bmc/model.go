@@ -81,6 +81,7 @@ type Inventory struct {
 	CPUModel     string   `json:"cpu_model,omitempty"`
 	MemoryGiB    float64  `json:"memory_gib,omitempty"`
 	Hostname     string   `json:"hostname,omitempty"`
+	Account      *Account `json:"account,omitempty"`
 	Notes        []string `json:"notes,omitempty"`
 }
 

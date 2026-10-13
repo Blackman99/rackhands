@@ -55,6 +55,7 @@ targets:
   - {name: dmtf,   redfish: "http://127.0.0.1:8405", allow: [all]}
   - {name: sim,    ipmi: "127.0.0.1:9623", allow: [power]}
   - {name: legacy, redfish: "http://127.0.0.1:1", ipmi: "127.0.0.1:9623", timeout: 5s}
+  - {name: simro,  ipmi: "127.0.0.1:9623", username: reader}
 YAML
 export BMC_PASSWORD=secret
 R() { "$BIN" --config "$WORK/targets.yaml" "$@"; }
@@ -71,10 +72,22 @@ fi
 
 # --- reads, every vendor
 R --json inventory >"$WORK/inv.json" || fail "inventory over the whole fleet"
-expect "vendor detection" test "$(jq -r '[.[] | .data.vendor] | join(",")' "$WORK/inv.json")" = "Dell,HPE,Lenovo,Supermicro,Generic,Supermicro,Supermicro"
+expect "vendor detection" test "$(jq -r '[.[] | .data.vendor] | join(",")' "$WORK/inv.json")" = "Dell,HPE,Lenovo,Supermicro,Generic,Supermicro,Supermicro,Supermicro"
 expect "DMTF mockup inventory" test "$(jq -r '.[] | select(.target=="dmtf") | .data.serial' "$WORK/inv.json")" = "437XR1138R2"
 expect "IPMI FRU inventory" test "$(jq -r '.[] | select(.target=="sim") | .data.model' "$WORK/inv.json")" = "SYS-1029P-SIM"
 expect "IPMI fallback when Redfish is down" test "$(jq -r '.[] | select(.target=="legacy") | .via' "$WORK/inv.json")" = "ipmi (fallback)"
+
+# --- effective privilege of the configured account (issue #1), read-only
+acct() { jq -r --arg t "$1" '.[] | select(.target==$t) | .data.account | "\(.role) \(.can_control) \(.warning != null)"' "$WORK/inv.json"; }
+expect "Redfish admin on a box with power allowed: no warning" test "$(acct r750)" = "Administrator true false"
+expect "Redfish ReadOnly account detected" test "$(acct sr650)" = "ReadOnly false false"
+expect "Redfish Operator on a read-only target warns" test "$(acct x11)" = "Operator true true"
+expect "HPE iLO privileges from Oem.Hpe.Privileges" test "$(acct dl380)" = "Administrator true false"
+expect "IPMI User-privilege account detected (Get Session Info + Get User Access)" test "$(acct simro)" = "User false false"
+expect "IPMI Administrator on a read-only target warns" test "$(acct legacy)" = "Administrator true true"
+R inventory x11 sr650 2>"$WORK/inv-warn.txt" >/dev/null
+expect "CLI prints the account warning on stderr" grep -q "WARN  x11: logs in as Operator" "$WORK/inv-warn.txt"
+expect "no warning for a read-only account" sh -c "! grep -q 'WARN  sr650' \"$WORK/inv-warn.txt\""
 
 set +e; R --json health >"$WORK/health.json"; code=$?; set -e
 expect "health exits 1 when something is unhealthy" test $code -eq 1
