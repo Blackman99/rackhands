@@ -45,7 +45,7 @@ func TestPlanConfirm(t *testing.T) {
 	if _, _, err := a.Confirm(ctx, "test", other, p.Token); err == nil {
 		t.Fatal("token accepted for a different action")
 	}
-	if _, _, err := a.Confirm(ctx, "test", d, "rh1-0-bogus"); err == nil {
+	if _, _, err := a.Confirm(ctx, "test", d, "rh2-0-bogus-bogus"); err == nil {
 		t.Fatal("bogus token accepted")
 	}
 	if _, res, err := a.Confirm(ctx, "test", d, p.Token); err != nil || !strings.Contains(res, "204") {
