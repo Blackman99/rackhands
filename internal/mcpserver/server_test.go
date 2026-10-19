@@ -261,3 +261,36 @@ func TestUpdateFirmwareWait(t *testing.T) {
 		t.Fatalf("%v", done)
 	}
 }
+
+// Regression: two identical plans back to back (same second) used to get the
+// same token, so approving the second one failed with "already used".
+func TestTwoIdenticalPlansSameSecond(t *testing.T) {
+	cs, dell, _ := setup(t, "power")
+	args := map[string]any{"target": "db-01", "action": "force-restart"}
+	p1, ok1 := call(t, cs, "power_action", args)
+	p2, ok2 := call(t, cs, "power_action", args)
+	if !ok1 || !ok2 {
+		t.Fatalf("%v %v", p1, p2)
+	}
+	t1, t2 := p1["confirm_token"].(string), p2["confirm_token"].(string)
+	if t1 == t2 {
+		t.Fatalf("identical plans got the same token %q", t1)
+	}
+	for i, tok := range []string{t1, t2} {
+		done, ok := call(t, cs, "power_action", map[string]any{"target": "db-01", "action": "force-restart", "confirm_token": tok})
+		if !ok || done["status"] != "done" {
+			t.Fatalf("plan %d: %v", i+1, done)
+		}
+	}
+	if dell.Count() != 2 {
+		t.Fatalf("want exactly 2 writes, got %d", dell.Count())
+	}
+	for _, tok := range []string{t1, t2} {
+		if out, ok := call(t, cs, "power_action", map[string]any{"target": "db-01", "action": "force-restart", "confirm_token": tok}); ok || !strings.Contains(out["error"].(string), "already used") {
+			t.Fatalf("replay: %v", out)
+		}
+	}
+	if dell.Count() != 2 {
+		t.Fatal("replay wrote to the BMC")
+	}
+}

@@ -88,6 +88,16 @@ err, done, text = s.tool("power_action", {"target": "dmtf", "action": "force-res
 check(not err and done["status"] == "done" and "204" in done["result"], f"confirmed call executes against the mockup server: {text[:120]}")
 err, _, text = s.tool("power_action", {"target": "dmtf", "action": "force-restart", "confirm_token": plan["confirm_token"]})
 check(err and "already used" in text, "token cannot be replayed")
+err, a, _ = s.tool("power_action", {"target": "dmtf", "action": "force-restart"})
+err2, b, _ = s.tool("power_action", {"target": "dmtf", "action": "force-restart"})
+check(not err and not err2 and a["confirm_token"] != b["confirm_token"], "identical plans in the same second get distinct tokens")
+ok = []
+for tok in (b["confirm_token"], a["confirm_token"]):
+    err, done, _ = s.tool("power_action", {"target": "dmtf", "action": "force-restart", "confirm_token": tok})
+    ok.append(not err and done["status"] == "done")
+check(all(ok), "both identical same-second plans can be confirmed once each")
+err, _, text = s.tool("power_action", {"target": "dmtf", "action": "force-restart", "confirm_token": a["confirm_token"]})
+check(err and "already used" in text, "each of them stays single-use")
 err, _, text = s.tool("power_action", {"target": "sr650", "action": "on"})
 check(err and "allow:" in text, "target without allow: power is refused")
 s.close()

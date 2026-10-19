@@ -106,29 +106,47 @@ func NewTokens(ttl time.Duration) *Tokens {
 	return &Tokens{key: k, ttl: ttl, now: time.Now, used: map[string]time.Time{}}
 }
 
-func (t *Tokens) mac(op Op, exp int64) string {
+// tokenPrefix versions the token format. rh1 tokens (no nonce) are no
+// longer issued and are rejected as malformed.
+const tokenPrefix = "rh2"
+
+// nonceBytes is the size of the random per-token nonce. It makes every
+// issued token unique, even for identical requests in the same second.
+const nonceBytes = 12
+
+func (t *Tokens) mac(op Op, exp int64, nonce string) string {
 	h := hmac.New(sha256.New, t.key)
-	fmt.Fprintf(h, "%d\x00%s", exp, op.canonical())
-	return hex.EncodeToString(h.Sum(nil))[:20]
+	fmt.Fprintf(h, "%s\x00%d\x00%s\x00%s", tokenPrefix, exp, nonce, op.canonical())
+	return hex.EncodeToString(h.Sum(nil))[:32]
 }
 
-// Issue returns a token for exactly this op.
+// Issue returns a fresh, unique token for exactly this op:
+// rh2-<expiry unix>-<random nonce>-<HMAC(key, expiry, nonce, op)>.
 func (t *Tokens) Issue(op Op) (string, time.Time) {
+	n := make([]byte, nonceBytes)
+	if _, err := rand.Read(n); err != nil {
+		panic(err)
+	}
+	nonce := hex.EncodeToString(n)
 	exp := t.now().Add(t.ttl)
-	return fmt.Sprintf("rh1-%d-%s", exp.Unix(), t.mac(op, exp.Unix())), exp
+	return fmt.Sprintf("%s-%d-%s-%s", tokenPrefix, exp.Unix(), nonce, t.mac(op, exp.Unix(), nonce)), exp
 }
 
 // Redeem checks the token matches op, is unexpired and unused, and burns it.
 func (t *Tokens) Redeem(op Op, token string) error {
 	parts := strings.Split(token, "-")
-	if len(parts) != 3 || parts[0] != "rh1" {
+	if len(parts) != 4 || parts[0] != tokenPrefix {
 		return errors.New("malformed confirm_token")
 	}
 	exp, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil {
 		return errors.New("malformed confirm_token")
 	}
-	if !hmac.Equal([]byte(parts[2]), []byte(t.mac(op, exp))) {
+	nonce := parts[2]
+	if b, err := hex.DecodeString(nonce); err != nil || len(b) != nonceBytes || hex.EncodeToString(b) != nonce {
+		return errors.New("malformed confirm_token")
+	}
+	if !hmac.Equal([]byte(parts[3]), []byte(t.mac(op, exp, nonce))) {
 		return errors.New("confirm_token does not match this exact request (target, action and arguments must be identical to the plan)")
 	}
 	if t.now().Unix() > exp {
