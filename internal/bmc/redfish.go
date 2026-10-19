@@ -864,7 +864,28 @@ func (r *Redfish) PlanFirmwareUpdate(ctx context.Context, imageURI string) (*Pla
 	}
 	body := map[string]any{"ImageURI": imageURI}
 	sum := fmt.Sprintf("flash firmware on %s (%s %s) from %s; the BMC applies it per its own policy (some components need a reboot)", r.target, r.prof.Vendor, r.bmcLabel(), imageURI)
-	return NewPlan(sum, "POST", target, body, "", r.post(target, body)), nil
+	p := NewPlan(sum, "POST", target, body, "", nil)
+	// iLO 5 returns no Task; its flash state on UpdateService is what to watch.
+	ilo, hasILO := iloFlash(svc)
+	if hasILO {
+		p.before = ilo
+	}
+	p.exec = func(ctx context.Context) (string, error) {
+		resp, err := r.c.Post(ctx, target, body)
+		if err != nil {
+			return "", err
+		}
+		p.task = taskRef(resp)
+		switch {
+		case p.task != "":
+			return fmt.Sprintf("accepted (HTTP %d), task %s", resp.Status, p.task), nil
+		case hasILO:
+			p.task = ILOFlash
+			return fmt.Sprintf("accepted (HTTP %d); iLO reports the flash on UpdateService (task %s)", resp.Status, ILOFlash), nil
+		}
+		return fmt.Sprintf("accepted (HTTP %d)", resp.Status), nil
+	}
+	return p, nil
 }
 
 // oemAction finds an OEM action target either where iLO puts it

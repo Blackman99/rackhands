@@ -1,0 +1,34 @@
+{
+  "@odata.id": "/redfish/v1/TaskService/Tasks/JID_001",
+  "@odata.type": "#Task.v1_7_3.Task",
+  "Id": "JID_001",
+  "Messages": [
+    {
+      "Message": "Downloading the iDRAC firmware package.",
+      "MessageId": "IDRAC.2.9.RED052",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    }
+  ],
+  "Name": "Task",
+  "Oem": {
+    "Dell": {
+      "@odata.type": "#DellJob.v1_6_0.DellJob",
+      "CompletionTime": null,
+      "EndTime": "TIME_NA",
+      "Id": "JID_001",
+      "JobState": "Downloading",
+      "JobType": "FirmwareUpdate",
+      "Message": "Downloading the iDRAC firmware package.",
+      "MessageArgs": [],
+      "MessageId": "RED052",
+      "Name": "Firmware Update: iDRAC",
+      "PercentComplete": 0,
+      "StartTime": "TIME_NOW"
+    }
+  },
+  "PercentComplete": 0,
+  "StartTime": "2026-10-19T02:10:00Z",
+  "TaskState": "Running",
+  "TaskStatus": "OK"
+}

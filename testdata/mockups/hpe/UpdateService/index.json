@@ -16,5 +16,19 @@
     "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory"
   },
   "Name": "Update Service",
+  "Oem": {
+    "Hpe": {
+      "@odata.type": "#HpeiLOUpdateServiceExt.v2_3_0.HpeiLOUpdateServiceExt",
+      "FlashProgressPercent": 100,
+      "Result": {
+        "MessageArgs": [
+          "System ROM",
+          "U46_2.90_02_20_2026.fwpkg"
+        ],
+        "MessageId": "Update.1.1.UpdateSuccessful"
+      },
+      "State": "Complete"
+    }
+  },
   "ServiceEnabled": true
 }

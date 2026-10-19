@@ -164,7 +164,7 @@ exit 3</p>
   <div class="body two">
     <div>
       <h2 id="h104">For agents: same binary, <code>rackhands mcp</code>.</h2>
-      <p>Read tools carry <code>readOnlyHint</code> and work out of the box: <code>get_health</code>, <code>get_sensors</code>, <code>get_event_log</code>, <code>get_inventory</code>, <code>get_firmware_inventory</code>, <code>get_boot_config</code>, <code>get_power_state</code>, <code>list_targets</code>. Dangerous tools exist only if you start the server with <code>--allow</code>. Even then, the first call returns a plan and a token. The second call needs that token, and the server's instructions tell the agent to get your yes first. If it reuses the token, changes the action, or waits two minutes, it is refused.</p>
+      <p>Read tools carry <code>readOnlyHint</code> and work out of the box: <code>get_health</code>, <code>get_sensors</code>, <code>get_event_log</code>, <code>get_inventory</code>, <code>get_firmware_inventory</code>, <code>get_boot_config</code>, <code>get_power_state</code>, <code>list_targets</code>, <code>list_tasks</code>, <code>get_task</code>. <code>get_task</code> follows a firmware update to its end, iDRAC job or iLO flash, and needs no key. Dangerous tools exist only if you start the server with <code>--allow</code>. Even then, the first call returns a plan and a token. The second call needs that token, and the server's instructions tell the agent to get your yes first. If it reuses the token, changes the action, or waits two minutes, it is refused.</p>
     </div>
 <pre class="term" tabindex="0">{"mcpServers": {"rackhands": {
   "command": "rackhands",

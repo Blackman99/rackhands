@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/Blackman99/rackhands/internal/testbmc"
 )
@@ -19,7 +20,7 @@ func cfg(t *testing.T) (string, *testbmc.Server) {
 	p := filepath.Join(t.TempDir(), "targets.yaml")
 	body := fmt.Sprintf(`defaults: {username: u, password: p}
 targets:
-  - {name: db-01, redfish: %q, allow: [power], tags: [prod]}
+  - {name: db-01, redfish: %q, allow: [power, firmware], tags: [prod]}
   - {name: k8s-12, redfish: %q, tags: [prod]}
 `, dell.URL, lenovo.URL)
 	if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
@@ -127,5 +128,111 @@ func TestTLSFingerprintCLI(t *testing.T) {
 	code, out, errOut = rh("--host", srv.URL, "--json", "pin")
 	if code != 0 || !strings.Contains(out, `"tls_fingerprint"`) {
 		t.Fatalf("json pin: %d %s %s", code, out, errOut)
+	}
+}
+
+func fastPolls(t *testing.T) {
+	e, m := pollEvery, pollMax
+	pollEvery, pollMax = time.Millisecond, 2*time.Millisecond
+	t.Cleanup(func() { pollEvery, pollMax = e, m })
+}
+
+func TestFirmwareUpdateWait(t *testing.T) {
+	fastPolls(t)
+	c, dell := cfg(t)
+	code, out, e := rh("--config", c, "--allow", "firmware", "firmware-update", "db-01", "https://repo.example/iDRAC.EXE", "--yes", "db-01", "--wait")
+	t.Logf("stdout:\n%s\nstderr:\n%s", out, e)
+	if code != 0 || !strings.HasPrefix(out, "DONE  db-01: JID_001 completed") || !strings.Contains(out, "Job completed successfully.") {
+		t.Fatalf("exit %d", code)
+	}
+	for _, want := range []string{"then watch the task it starts", "SENT  db-01: accepted (HTTP 202)", "watching JID_001", "WAIT  db-01 JID_001  Downloading", "Running      40% ████░░░░░░  Installing"} {
+		if !strings.Contains(e, want) {
+			t.Fatalf("stderr lacks %q", want)
+		}
+	}
+	if dell.Count() != 1 {
+		t.Fatalf("watching must only read: %d writes", dell.Count())
+	}
+	// without --wait: say how to follow it
+	code, _, e = rh("--config", c, "--allow", "firmware", "firmware-update", "db-01", "https://repo.example/BIOS.EXE", "--yes", "db-01")
+	if code != 0 || !strings.Contains(e, "follow it: rackhands --config "+c+" task db-01 JID_001 --wait") {
+		t.Fatalf("%d %s", code, e)
+	}
+	// --wait never skips a gate
+	if code, _, e := rh("--config", c, "firmware-update", "db-01", "https://x/y", "--yes", "db-01", "--wait"); code != 3 || !strings.Contains(e, "--allow firmware") {
+		t.Fatalf("--wait bypassed --allow: %d %s", code, e)
+	}
+	if code, _, e := rh("--config", c, "--allow", "firmware", "firmware-update", "k8s-12", "https://x/y", "--yes", "k8s-12", "--wait"); code != 3 || !strings.Contains(e, "allow:") {
+		t.Fatalf("--wait bypassed the target key: %d %s", code, e)
+	}
+	if code, _, e := rh("--config", c, "--allow", "firmware", "firmware-update", "db-01", "https://x/y", "--wait"); code != 3 || !strings.Contains(e, "--yes db-01") {
+		t.Fatalf("--wait bypassed confirmation: %d %s", code, e)
+	}
+	code, out, e = rh("--config", c, "--allow", "firmware", "--json", "firmware-update", "db-01", "https://x/y", "--yes", "db-01", "--wait")
+	if code != 0 || !strings.Contains(out, `"verdict": "completed"`) || strings.Contains(e, "WAIT") {
+		t.Fatalf("json: %d %s %s", code, out, e)
+	}
+}
+
+func TestTaskCommand(t *testing.T) {
+	fastPolls(t)
+	c, dell := cfg(t)
+	code, out, e := rh("--config", c, "task", "db-01")
+	t.Logf("list:\n%s%s", out, e)
+	if code != 0 || !strings.Contains(out, "JID_003  iDRAC job  Scheduled  0%    Firmware Update: BIOS") {
+		t.Fatalf("exit %d", code)
+	}
+	code, out, e = rh("--config", c, "task", "db-01", "JID_002")
+	t.Logf("show:\n%s%s", out, e)
+	if code != 0 || !strings.Contains(out, "Unable to verify Update Package signature.") {
+		t.Fatalf("exit %d", code)
+	}
+	code, out, e = rh("--config", c, "task", "db-01", "JID_002", "--wait")
+	t.Logf("failed:\n%s%s", out, e)
+	if code != 4 || !strings.HasPrefix(out, "FAILED  db-01: JID_002 failed — Unable to verify Update Package signature.") {
+		t.Fatalf("exit %d", code)
+	}
+	code, out, e = rh("--config", c, "task", "db-01", "JID_003", "--wait")
+	t.Logf("staged:\n%s%s", out, e)
+	if code != 0 || !strings.HasPrefix(out, "STAGED  db-01: JID_003 is Scheduled — Task successfully scheduled.") || !strings.Contains(out, "power power db-01 restart") {
+		t.Fatalf("exit %d", code)
+	}
+	code, out, e = rh("--config", c, "task", "k8s-12", "/redfish/v1/TaskService/TaskMonitors/1", "--wait")
+	t.Logf("monitor:\n%s%s", out, e)
+	if code != 0 || !strings.HasPrefix(out, "DONE  k8s-12: task 1 completed in 6m41s — The target device 'UEFI'") {
+		t.Fatalf("exit %d", code)
+	}
+	code, out, e = rh("--config", c, "task", "db-01", "JID_404")
+	t.Logf("unknown:\n%s%s", out, e)
+	if code != 2 || !strings.Contains(e, "task not found: no JID_404 on this BMC; list them with `rackhands task db-01`") {
+		t.Fatalf("exit %d", code)
+	}
+	if dell.Count() != 0 {
+		t.Fatal("task is read-only")
+	}
+	for _, bad := range [][]string{
+		{"task", "db-01", "--wait"},
+		{"task"},
+		{"power", "db-01", "--wait"},
+		{"task", "db-01", "JID_001", "--wait-timeout", "soon"},
+		{"task", "all", "JID_001"},
+	} {
+		code, _, e := rh(append([]string{"--config", c}, bad...)...)
+		t.Logf("%v -> %d %s", bad, code, e)
+		if code != 2 || e == "" {
+			t.Fatalf("%v: exit %d", bad, code)
+		}
+	}
+}
+
+func TestTaskWaitTimeout(t *testing.T) {
+	pollEvery, pollMax = time.Second, time.Second
+	t.Cleanup(func() { pollEvery, pollMax = 2*time.Second, 15*time.Second })
+	c, _ := cfg(t)
+	start := time.Now()
+	code, out, e := rh("--config", c, "task", "k8s-12", "1", "--wait-timeout", "300ms")
+	t.Logf("timeout:\n%s%s", out, e)
+	if code != 4 || !strings.HasPrefix(out, "TIMEOUT  k8s-12: task 1 is still Running at 5% at the 300ms deadline.") || time.Since(start) > 3*time.Second {
+		t.Fatalf("exit %d after %v", code, time.Since(start))
 	}
 }

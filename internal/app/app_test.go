@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Blackman99/rackhands/internal/bmc"
 	"github.com/Blackman99/rackhands/internal/config"
 	"github.com/Blackman99/rackhands/internal/safety"
 	"github.com/Blackman99/rackhands/internal/testbmc"
@@ -84,5 +85,60 @@ func TestFleetSelectors(t *testing.T) {
 	}
 	if _, err := a.Resolve([]string{"db-09"}); err == nil {
 		t.Fatal("unknown target resolved")
+	}
+}
+
+func TestFollowAuditsTheTaskOutcome(t *testing.T) {
+	ctx := context.Background()
+	a, dell, audit := newApp(t, "firmware")
+	a.Cfg.Targets[0].Allow = []string{"firmware"}
+	d := Danger{Target: "db-01", Class: "firmware", Action: "update", Args: map[string]string{"image_uri": "https://repo.example/iDRAC.EXE"}}
+	p, err := a.Plan(ctx, "test", d, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p.Close()
+	w := bmc.WatchOptions{Every: time.Millisecond, MaxEvery: time.Millisecond}
+	_, res, out, err := a.ConfirmFollow(ctx, "test", d, p.Token, &w)
+	if err != nil || !strings.Contains(res, "JID_001") || out.Verdict != bmc.PhaseCompleted {
+		t.Fatalf("%v %q %+v", err, res, out)
+	}
+	b, _ := os.ReadFile(audit)
+	last := strings.TrimSpace(string(b))
+	last = last[strings.LastIndex(last, "\n")+1:]
+	for _, want := range []string{`"phase":"task"`, `"verdict":"completed"`, `"task_state":"Completed"`, `"watched_s":`, `"task":"/redfish/v1/TaskService/Tasks/JID_001"`, `"class":"firmware"`} {
+		if !strings.Contains(last, want) {
+			t.Fatalf("audit outcome missing %s:\n%s", want, last)
+		}
+	}
+
+	// A BMC that accepts the update but returns no task: say so, audit it.
+	dell.TaskLocation = ""
+	d.Args = map[string]string{"image_uri": "https://repo.example/BIOS.EXE"}
+	p, _ = a.Plan(ctx, "test", d, true)
+	p.Close()
+	_, _, out, err = a.ConfirmFollow(ctx, "test", d, p.Token, &w)
+	if err != nil || out.Verdict != bmc.VerdictNoTask || !out.Ok() {
+		t.Fatalf("%v %+v", err, out)
+	}
+	if b, _ := os.ReadFile(audit); !strings.Contains(string(b), `"verdict":"no-task"`) {
+		t.Fatal("no-task outcome not audited")
+	}
+}
+
+func TestWatchTaskIsReadOnly(t *testing.T) {
+	a, dell, audit := newApp(t) // no --allow at all
+	out, err := a.WatchTask(context.Background(), "db-02", "JID_002", bmc.WatchOptions{Every: time.Millisecond})
+	if err != nil || out.Verdict != bmc.PhaseFailed {
+		t.Fatalf("%v %+v", err, out)
+	}
+	if dell.Count() != 0 {
+		t.Fatal("watching a task must not write to the BMC")
+	}
+	if _, err := os.Stat(audit); err == nil {
+		t.Fatal("reads are not audited")
+	}
+	if _, err := a.WatchTask(context.Background(), "tag:db", "JID_002", bmc.WatchOptions{}); err == nil {
+		t.Fatal("watch fanned out")
 	}
 }

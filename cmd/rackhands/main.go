@@ -41,6 +41,7 @@ Read (always available):
   rackhands sensors   TARGET [--kind K] [--problems]
   rackhands events    TARGET [-n 30] [--min warning] [--all-logs]
   rackhands firmware  TARGET                installed firmware versions
+  rackhands task      TARGET [ID] [--wait]  BMC tasks / iDRAC jobs; --wait follows one until it ends
   rackhands boot      TARGET                boot order and override
   rackhands vendors                         vendor quirks rackhands handles
 
@@ -48,7 +49,7 @@ Dangerous (off by default; need --allow CLASS, the target's allow: list, and con
   rackhands power TARGET on|off|force-off|restart|force-restart|cycle|nmi   class: power
   rackhands boot TARGET --override pxe|cd|hdd|bios|none [--persistent]      class: boot
   rackhands bmc-reset TARGET                                                class: bmc-reset
-  rackhands firmware-update TARGET IMAGE_URL                                class: firmware
+  rackhands firmware-update TARGET IMAGE_URL [--wait]                       class: firmware
   rackhands vmedia TARGET insert ISO_URL | eject                            class: virtual-media
 
 TLS:
@@ -73,24 +74,28 @@ Flags:
   --dry-run         show the plan for a dangerous command and stop
   --audit-log FILE  JSONL audit of dangerous requests (default ~/.local/state/rackhands/audit.jsonl; "off")
   --timeout D       per-BMC timeout (default 20s)
+  --wait            firmware-update / task ID: follow the BMC task until it completes, fails or is staged
+  --wait-timeout D  give up watching after D (default: the target's wait_timeout, 30m); implies --wait
 
 Exit codes: 0 ok · 1 health problems found · 2 error · 3 refused or not confirmed
+            4 task failed, was cancelled, vanished, or was still running at the deadline · 130 stopped watching (Ctrl-C)
 `
 
 type opts struct {
-	config, host, ipmi, user, vendor, yes, audit, timeout, kind, min, override string
-	json, dryRun, problems, allLogs, persistent, help, version                 bool
-	allow                                                                      []string
-	n                                                                          int
-	args                                                                       []string
+	config, host, ipmi, user, vendor, yes, audit, timeout, kind, min, override, waitTimeout string
+	json, dryRun, problems, allLogs, persistent, help, version, wait                        bool
+	allow                                                                                   []string
+	n                                                                                       int
+	args                                                                                    []string
 }
 
 func parse(argv []string) (*opts, error) {
 	o := &opts{n: 30}
 	strFlags := map[string]*string{"config": &o.config, "host": &o.host, "ipmi": &o.ipmi, "user": &o.user, "vendor": &o.vendor,
-		"yes": &o.yes, "audit-log": &o.audit, "timeout": &o.timeout, "kind": &o.kind, "min": &o.min, "override": &o.override}
+		"yes": &o.yes, "audit-log": &o.audit, "timeout": &o.timeout, "kind": &o.kind, "min": &o.min, "override": &o.override,
+		"wait-timeout": &o.waitTimeout}
 	boolFlags := map[string]*bool{"json": &o.json, "dry-run": &o.dryRun, "problems": &o.problems, "all-logs": &o.allLogs,
-		"persistent": &o.persistent, "help": &o.help, "h": &o.help, "version": &o.version}
+		"persistent": &o.persistent, "help": &o.help, "h": &o.help, "version": &o.version, "wait": &o.wait}
 	for i := 0; i < len(argv); i++ {
 		a := argv[i]
 		if a == "--" {
@@ -148,6 +153,9 @@ func parse(argv []string) (*opts, error) {
 		default:
 			return nil, fmt.Errorf("unknown flag %s (see rackhands help)", a)
 		}
+	}
+	if o.waitTimeout != "" {
+		o.wait = true
 	}
 	return o, nil
 }
@@ -262,11 +270,19 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 		fmt.Fprintln(stdout, "rackhands", version)
 		return nil
 	}
+	if o.wait && cmd != "firmware-update" && cmd != "task" && cmd != "tasks" {
+		return fmt.Errorf("--wait follows BMC tasks: use it with firmware-update or task, not %s", cmd)
+	}
+	if _, err := waitTimeout(o); err != nil {
+		return err
+	}
 	a, err := build(o)
 	if err != nil {
 		return err
 	}
 	switch cmd {
+	case "task", "tasks", "job", "jobs":
+		return taskCmd(ctx, a, o, rest, stdout, stderr)
 	case "tls-fingerprint", "pin":
 		return tlsFingerprint(ctx, a, o, rest, stdout)
 	case "targets":
@@ -576,7 +592,7 @@ func fleetErr(res []app.Result) error {
 
 func oneRead(ctx context.Context, a *app.App, target string, fn func(context.Context, bmc.Backend) (any, error)) (app.Result, error) {
 	if target == "all" || strings.HasPrefix(target, "tag:") {
-		return app.Result{}, errors.New("this command takes one target")
+		return app.Result{}, fmt.Errorf("%q selects several machines; this command reads one, so name it (see `rackhands targets`)", target)
 	}
 	res, err := a.Fleet(ctx, []string{target}, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
 		return bmc.Call(ctx, c, func(b bmc.Backend) (any, error) { return fn(ctx, b) })
@@ -606,6 +622,15 @@ func dangerous(ctx context.Context, a *app.App, o *opts, stdin io.Reader, stdout
 		fmt.Fprintf(stderr, " %s", b)
 	}
 	fmt.Fprintf(stderr, "\n      via %s\n", p.Via)
+	follow := o.wait && d.Class == "firmware"
+	var deadline time.Duration
+	if follow {
+		deadline, _ = waitTimeout(o)
+		if t, err := a.One(d.Target); deadline == 0 && err == nil {
+			deadline = t.WaitTimeoutDur()
+		}
+		fmt.Fprintf(stderr, "      then watch the task it starts (reads only) until it ends, at most %s\n", fmtDur(deadline))
+	}
 	if o.dryRun {
 		if o.json {
 			return emit(stdout, map[string]any{"status": "dry-run", "plan": p.Plan, "via": p.Via})
@@ -631,11 +656,46 @@ func dangerous(ctx context.Context, a *app.App, o *opts, stdin io.Reader, stdout
 	if err != nil {
 		return err
 	}
-	if o.json {
-		return emit(stdout, map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res})
+	ref, _ := p.Plan.Task()
+	if !follow {
+		if o.json {
+			out := map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res}
+			if ref != "" {
+				out["task_ref"] = ref
+			}
+			return emit(stdout, out)
+		}
+		fmt.Fprintf(stdout, "DONE  %s: %s\n", name, res)
+		if ref != "" {
+			fmt.Fprintf(stderr, "      follow it: %s task %s %s --wait\n", self(o), name, bmc.ShortRef(ref))
+		}
+		return nil
 	}
-	fmt.Fprintf(stdout, "DONE  %s: %s\n", name, res)
-	return nil
+	w, pr, err := watchOpts(o, stderr, name, ref)
+	if err != nil {
+		return err
+	}
+	w.Timeout = deadline
+	if !o.json {
+		fmt.Fprintf(stderr, "SENT  %s: %s\n", name, res)
+		if ref != "" {
+			fmt.Fprintf(stderr, "      watching %s until it ends (at most %s; Ctrl-C stops watching, not the update)\n", bmc.ShortRef(ref), fmtDur(deadline))
+		}
+	}
+	out, err := a.Follow(ctx, "cli", d, p, w)
+	if pr != nil {
+		pr.end()
+	}
+	if err != nil {
+		return fmt.Errorf("the update was sent (%s) but watching it failed: %w", res, err)
+	}
+	if o.json {
+		if err := emit(stdout, map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res, "task": out}); err != nil {
+			return err
+		}
+		return codeErr(outcomeCode(out))
+	}
+	return codeErr(verdict(o, stdout, stderr, out))
 }
 
 func isTerminal(r io.Reader) bool {
@@ -702,11 +762,11 @@ func printVendors(w io.Writer, js bool) error {
 		Vendor, BMC, EventLogs, Quirks string
 	}
 	q := map[string]string{
-		"Dell":       "hides Previous-/Available- firmware copies; DellSystem *RollupStatus subsystem health; SEL under iDRAC.Embedded.1",
-		"HPE":        "iLO 4 (Oem.Hp) and iLO 5/6 (Oem.Hpe) AggregateHealthStatus; Manager.Reset sent without ResetType; IML severity Caution→Warning; OEM virtual media actions",
-		"Lenovo":     "If-Match ETag on every PATCH (XCC rejects PATCH without it); PlatformLog as the hardware log",
+		"Dell":       "hides Previous-/Available- firmware copies; DellSystem *RollupStatus subsystem health; SEL under iDRAC.Embedded.1; firmware jobs from the iDRAC job queue (Oem.Dell JobState wins over TaskState, Scheduled = staged for the next reboot)",
+		"HPE":        "iLO 4 (Oem.Hp) and iLO 5/6 (Oem.Hpe) AggregateHealthStatus; Manager.Reset sent without ResetType; IML severity Caution→Warning; OEM virtual media actions; iLO 5 SimpleUpdate has no Task, so the flash is followed on UpdateService Oem.Hpe.State",
+		"Lenovo":     "If-Match ETag on every PATCH (XCC rejects PATCH without it); PlatformLog as the hardware log; firmware tasks via a DSP0266 task monitor",
 		"Supermicro": "Log1 as SEL; X11 OEM-only virtual media reported as unsupported instead of failing mid-way",
-		"Generic":    "pure DMTF schema: Thermal/Power or Sensors, LogServices with LogEntryType=SEL, SimpleUpdate, InsertMedia",
+		"Generic":    "pure DMTF schema: Thermal/Power or Sensors, LogServices with LogEntryType=SEL, SimpleUpdate, InsertMedia, TaskService tasks and task monitors",
 	}
 	var rows []row
 	for _, v := range bmc.Profiles() {

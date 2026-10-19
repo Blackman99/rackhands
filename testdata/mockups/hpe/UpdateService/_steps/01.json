@@ -1,0 +1,26 @@
+{
+  "@odata.id": "/redfish/v1/UpdateService",
+  "@odata.type": "#UpdateService.v1_11_0.UpdateService",
+  "Actions": {
+    "#UpdateService.SimpleUpdate": {
+      "TransferProtocol@Redfish.AllowableValues": [
+        "HTTP",
+        "HTTPS",
+        "NFS",
+        "CIFS"
+      ],
+      "target": "/redfish/v1/UpdateService/Actions/UpdateService.SimpleUpdate"
+    }
+  },
+  "FirmwareInventory": {
+    "@odata.id": "/redfish/v1/UpdateService/FirmwareInventory"
+  },
+  "Name": "Update Service",
+  "Oem": {
+    "Hpe": {
+      "FlashProgressPercent": 0,
+      "State": "Idle"
+    }
+  },
+  "ServiceEnabled": true
+}

@@ -3,8 +3,14 @@
 layout (serve with: redfishMockupServer.py -S -D testdata/mockups/<vendor>).
 
 They reproduce the OEM shapes rackhands handles (resource paths, log service
-ids, Oem health rollups, firmware inventory noise, OEM virtual media actions).
+ids, Oem health rollups, firmware inventory noise, OEM virtual media actions,
+firmware tasks / iDRAC jobs / iLO flash state).
 Values are invented; structure follows each vendor's public Redfish docs.
+
+Resources that change over time (a task going Running -> Completed) also get
+<path>/_steps/NN.json snapshots. The unit-test server (internal/testbmc) serves
+them one per GET, then index.json; the DMTF Redfish-Mockup-Server only ever
+serves index.json, i.e. the final state.
 Regenerate with: python3 testdata/mockups/make_mockups.py
 """
 import json, os, shutil
@@ -22,16 +28,27 @@ class Mock:
         self.root = os.path.join(HERE, name)
         shutil.rmtree(self.root, ignore_errors=True)
 
-    def put(self, path, obj, typ=None):
-        obj = dict(obj)
-        obj["@odata.id"] = V1 + path if path else V1 + "/"
-        if typ:
-            obj["@odata.type"] = typ
+    def put(self, path, obj, typ=None, odata_id=None, steps=()):
+        """Write path/index.json. odata_id overrides @odata.id (a task monitor
+        answers with the Task it watches). steps are earlier snapshots of the
+        same resource, written to path/_steps/NN.json."""
+        def fix(o):
+            o = dict(o)
+            o["@odata.id"] = odata_id or (V1 + path if path else V1 + "/")
+            if typ:
+                o["@odata.type"] = typ
+            return o
         d = os.path.join(self.root, path.strip("/"))
         os.makedirs(d, exist_ok=True)
         with open(os.path.join(d, "index.json"), "w") as f:
-            json.dump(obj, f, indent=2, sort_keys=True)
+            json.dump(fix(obj), f, indent=2, sort_keys=True)
             f.write("\n")
+        if steps:
+            os.makedirs(os.path.join(d, "_steps"), exist_ok=True)
+            for i, st in enumerate(steps):
+                with open(os.path.join(d, "_steps", "%02d.json" % (i + 1)), "w") as f:
+                    json.dump(fix(st), f, indent=2, sort_keys=True)
+                    f.write("\n")
 
     def coll(self, path, members, name, typ="#Collection"):
         self.put(path, {"Name": name, "Members": [ref(m) for m in members], "Members@odata.count": len(members)}, typ)
@@ -107,7 +124,8 @@ def log_entries(m, path, entries, inline=True):
     m.put(path + "/Entries", {"Name": "Log Entries", "Members": members, "Members@odata.count": len(members)}, "#LogEntryCollection.LogEntryCollection")
 
 
-def firmware(m, items, simple_update=True):
+def firmware(m, items, simple_update=True, oem=None, oem_steps=()):
+    """oem / oem_steps: UpdateService Oem block (final state and earlier snapshots)."""
     ids = [i["Id"] for i in items]
     for i in items:
         m.put("/UpdateService/FirmwareInventory/" + i["Id"], i, "#SoftwareInventory.v1_9_0.SoftwareInventory")
@@ -116,7 +134,50 @@ def firmware(m, items, simple_update=True):
     if simple_update:
         us["Actions"] = {"#UpdateService.SimpleUpdate": {"target": V1 + "/UpdateService/Actions/UpdateService.SimpleUpdate",
                                                          "TransferProtocol@Redfish.AllowableValues": ["HTTP", "HTTPS", "NFS", "CIFS"]}}
-    m.put("/UpdateService", us, "#UpdateService.v1_11_0.UpdateService")
+
+    def with_oem(o):
+        u = dict(us)
+        if o:
+            u["Oem"] = o
+        return u
+    m.put("/UpdateService", with_oem(oem), "#UpdateService.v1_11_0.UpdateService", steps=[with_oem(o) for o in oem_steps])
+
+
+TASK = "#Task.v1_7_3.Task"
+
+
+def msg(text, mid, sev="OK"):
+    return {"Message": text, "MessageId": mid, "MessageSeverity": sev, "Severity": sev}
+
+
+def task(tid, state, status="OK", pct=None, messages=(), start="2026-10-19T02:10:00Z", end=None, name=None, oem=None):
+    """A DMTF Task (DSP0268 Task.v1_7). TaskState is the lifecycle, TaskStatus the health."""
+    t = {"Id": tid, "Name": name or "Task " + tid, "TaskState": state, "TaskStatus": status,
+         "StartTime": start, "Messages": list(messages)}
+    if pct is not None:
+        t["PercentComplete"] = pct
+    if end:
+        t["EndTime"] = end
+    if oem:
+        t["Oem"] = oem
+    return t
+
+
+def task_service(m, tasks):
+    """tasks: [(id, final, steps)]"""
+    for tid, final, steps in tasks:
+        m.put("/TaskService/Tasks/" + tid, final, TASK, steps=steps)
+    m.coll("/TaskService/Tasks", ["/TaskService/Tasks/" + t[0] for t in tasks], "Task Collection", "#TaskCollection.TaskCollection")
+    m.put("/TaskService", {"Id": "TaskService", "Name": "Task Service", "ServiceEnabled": True, "CompletedTaskOverWritePolicy": "Oldest",
+                           "Status": status(), "Tasks": ref("/TaskService/Tasks")}, "#TaskService.v1_2_0.TaskService")
+
+
+def dell_job(jid, state, pct, message, message_id, name, job_type="FirmwareUpdate", start="TIME_NOW", end="TIME_NA"):
+    """DellJob as iDRAC 9 serves it: JobState is the truth, StartTime/EndTime
+    are often the literals TIME_NOW / TIME_NA rather than timestamps."""
+    return {"Id": jid, "Name": name, "JobState": state, "JobType": job_type, "PercentComplete": pct,
+            "Message": message, "MessageId": message_id, "MessageArgs": [], "StartTime": start, "EndTime": end,
+            "CompletionTime": None if state not in ("Completed", "Failed") else "2026-10-19T02:13:02"}
 
 
 def thermal(m, path, temps, fans):
@@ -154,7 +215,8 @@ def std_vm_actions(p):
 def dell():
     m = Mock("dell")
     S, C, M = "/Systems/System.Embedded.1", "/Chassis/System.Embedded.1", "/Managers/iDRAC.Embedded.1"
-    common_root(m, "Dell", "Integrated Dell Remote Access Controller", {"Dell": {"ManagerMACAddress": "d0:8e:79:00:00:01", "ServiceTag": "7XQ2KF3"}})
+    common_root(m, "Dell", "Integrated Dell Remote Access Controller", {"Dell": {"ManagerMACAddress": "d0:8e:79:00:00:01", "ServiceTag": "7XQ2KF3"}},
+                {"TaskService": ref("/TaskService")})
     m.coll("/Systems", [S], "Computer System Collection")
     m.coll("/Chassis", [C], "Chassis Collection")
     m.coll("/Managers", [M], "Manager Collection")
@@ -217,6 +279,35 @@ def dell():
         {"Id": "Installed-108255-22.31.6__NIC.Embedded.1-1-1", "Name": "Broadcom Gigabit Ethernet BCM5720", "Version": "22.31.6", "Updateable": True},
         {"Id": "Installed-0-00.3D.69__PSU.Slot.1", "Name": "PS1 Power Supply", "Version": "00.3D.69", "Updateable": True},
     ])
+    # Firmware jobs. SimpleUpdate answers 202 + Location: /redfish/v1/TaskService/Tasks/JID_…; that Task
+    # carries the DellJob under Oem.Dell, and JobState is the truth (TaskState stays "Running" while a BIOS
+    # job sits "Scheduled" waiting for the host reboot). The iDRAC job queue is Managers/iDRAC.Embedded.1/Jobs.
+    def dj(jid, state, pct, message, mid, name, **kw):
+        return {"Dell": dict(dell_job(jid, state, pct, message, mid, name, **kw), **{"@odata.type": "#DellJob.v1_6_0.DellJob"})}
+    idrac = "Firmware Update: iDRAC"
+    task_service(m, [
+        ("JID_001", task("JID_001", "Completed", pct=100, end="2026-10-19T02:13:02Z", name="Task",
+                         messages=[msg("Job completed successfully.", "IDRAC.2.9.PR19")],
+                         oem=dj("JID_001", "Completed", 100, "Job completed successfully.", "PR19", idrac)),
+         [task("JID_001", "Running", pct=0, name="Task", messages=[msg("Downloading the iDRAC firmware package.", "IDRAC.2.9.RED052")],
+               oem=dj("JID_001", "Downloading", 0, "Downloading the iDRAC firmware package.", "RED052", idrac)),
+          task("JID_001", "Running", pct=40, name="Task", messages=[msg("Installing the iDRAC firmware package.", "IDRAC.2.9.RED053")],
+               oem=dj("JID_001", "Running", 40, "Installing the iDRAC firmware package.", "RED053", idrac)),
+          task("JID_001", "Running", pct=80, name="Task", messages=[msg("Installing the iDRAC firmware package.", "IDRAC.2.9.RED053")],
+               oem=dj("JID_001", "Running", 80, "Installing the iDRAC firmware package.", "RED053", idrac))]),
+        ("JID_002", task("JID_002", "Exception", "Critical", pct=0, end="2026-10-19T01:41:12Z", name="Task",
+                         messages=[msg("Unable to verify Update Package signature.", "IDRAC.2.9.RED007", "Critical")],
+                         oem=dj("JID_002", "Failed", 0, "Unable to verify Update Package signature.", "RED007", "Firmware Update: PERC H755 Front")), []),
+        ("JID_003", task("JID_003", "Running", pct=0, name="Task", messages=[msg("Task successfully scheduled.", "IDRAC.2.9.JCP001")],
+                         oem=dj("JID_003", "Scheduled", 0, "Task successfully scheduled.", "JCP001", "Firmware Update: BIOS")), []),
+    ])
+    # the queue lists oldest first, like iDRAC
+    jobs = [dell_job("JID_001", "Completed", 100, "Job completed successfully.", "PR19", idrac),
+            dell_job("JID_002", "Failed", 0, "Unable to verify Update Package signature.", "RED007", "Firmware Update: PERC H755 Front"),
+            dell_job("JID_003", "Scheduled", 0, "Task successfully scheduled.", "JCP001", "Firmware Update: BIOS")]
+    for j in jobs:
+        m.put(M + "/Jobs/" + j["Id"], j, "#DellJob.v1_6_0.DellJob")
+    m.coll(M + "/Jobs", [M + "/Jobs/" + j["Id"] for j in jobs], "JobQueue", "#JobCollection.JobCollection")
     # iDRAC: 16 fixed slots, slot 1 is disabled and nameless; integration logs in as "admin"
     accounts(m, [("1", "", "None", None), ("2", "root", "Administrator", None), ("3", "admin", "Administrator", None),
                  ("4", "agent", "ReadOnly", None)], roles={"None": []})
@@ -293,7 +384,13 @@ def hpe():
         {"Id": "3", "Name": "Intelligent Platform Abstraction Data", "Version": "21.4.0 Build 37", "Updateable": True},
         {"Id": "4", "Name": "Server Platform Services (SPS) Firmware", "Version": "6.1.4.47", "Updateable": False},
         {"Id": "5", "Name": "HPE MR416i-a Gen10+", "Version": "52.24.3-4948", "Updateable": True},
-    ])
+    ],
+        # iLO 5: SimpleUpdate returns no Task; the flash is followed through UpdateService Oem.Hpe.State and
+        # FlashProgressPercent (Idle, Uploading, Verifying, Writing, Updating, Complete, Error).
+        oem={"Hpe": {"@odata.type": "#HpeiLOUpdateServiceExt.v2_3_0.HpeiLOUpdateServiceExt", "State": "Complete", "FlashProgressPercent": 100,
+                     "Result": {"MessageId": "Update.1.1.UpdateSuccessful", "MessageArgs": ["System ROM", "U46_2.90_02_20_2026.fwpkg"]}}},
+        oem_steps=[{"Hpe": {"State": s_, "FlashProgressPercent": p_}} for s_, p_ in
+                   (("Idle", 0), ("Uploading", 0), ("Verifying", 0), ("Writing", 35), ("Updating", 85))])
     # iLO 5: no RoleId on older firmware; privileges are Oem.Hpe.Privileges booleans
     def priv(power, cfg, users):
         return {"Hpe": {"LoginName": "", "Privileges": {"LoginPriv": True, "RemoteConsolePriv": cfg, "VirtualMediaPriv": cfg,
@@ -307,7 +404,8 @@ def hpe():
 def lenovo():
     m = Mock("lenovo")
     S, C, M = "/Systems/1", "/Chassis/1", "/Managers/1"
-    common_root(m, "Lenovo", "ThinkSystem SR650 V2", {"Lenovo": {"@odata.type": "#LenovoServiceRoot.v1_0_0.LenovoServiceRoot", "Version": "XCC2"}})
+    common_root(m, "Lenovo", "ThinkSystem SR650 V2", {"Lenovo": {"@odata.type": "#LenovoServiceRoot.v1_0_0.LenovoServiceRoot", "Version": "XCC2"}},
+                {"TaskService": ref("/TaskService")})
     m.coll("/Systems", [S], "Computer System Collection")
     m.coll("/Chassis", [C], "Chassis Collection")
     m.coll("/Managers", [M], "Manager Collection")
@@ -363,6 +461,20 @@ def lenovo():
         {"Id": "UEFI", "Name": "UEFI", "Version": "AFE128K-1.80", "Updateable": True},
         {"Id": "LXPM", "Name": "LXPM Diagnostic Software", "Version": "PDL146M-3.30", "Updateable": True},
     ])
+    # XCC follows DSP0266 to the letter: SimpleUpdate answers 202 + Location: a task monitor, which answers
+    # 202 + the Task while it runs. Task 1 runs to Completed; task 2 ends in Exception with the reason.
+    running = [task("1", "Running", pct=p_, messages=[msg("The task with Id '1' has started.", "TaskEvent.1.0.TaskStarted")]) for p_ in (5, 35, 80)]
+    task_service(m, [
+        ("1", task("1", "Completed", pct=100, end="2026-10-19T02:16:41Z",
+                   messages=[msg("The task with Id '1' has started.", "TaskEvent.1.0.TaskStarted"),
+                             msg("The target device 'UEFI' has been successfully updated with image 'lnvgy_fw_uefi_afe130k-1.90.uxz'.", "Update.1.1.UpdateSuccessful"),
+                             msg("The task with Id '1' has completed.", "TaskEvent.1.0.TaskCompletedOK")]), running),
+        ("2", task("2", "Exception", "Critical", pct=12, start="2026-10-18T22:02:10Z", end="2026-10-18T22:02:51Z",
+                   messages=[msg("The task with Id '2' has started.", "TaskEvent.1.0.TaskStarted"),
+                             msg("Verification of image 'lnvgy_fw_xcc_uhc832d-2.20.uxz' at 'BMC-Primary' failed.", "Update.1.1.VerificationFailed", "Critical"),
+                             msg("The task with Id '2' has been aborted.", "TaskEvent.1.0.TaskAborted", "Critical")]), []),
+    ])
+    m.put("/TaskService/TaskMonitors/1", running[0], TASK, odata_id=V1 + "/TaskService/Tasks/1")
     # XCC: custom roles (CustomRoleN) carry their own privilege list; integration's "admin" is read-only here
     accounts(m, [("1", "USERID", "Administrator", None), ("2", "admin", "ReadOnly", None), ("3", "fanwatch", "CustomRole1", None)],
              roles={"CustomRole1": ["Login", "ConfigureComponents"]})

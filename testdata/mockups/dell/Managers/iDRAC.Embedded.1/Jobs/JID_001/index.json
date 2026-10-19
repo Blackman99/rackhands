@@ -1,0 +1,15 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_001",
+  "@odata.type": "#DellJob.v1_6_0.DellJob",
+  "CompletionTime": "2026-10-19T02:13:02",
+  "EndTime": "TIME_NA",
+  "Id": "JID_001",
+  "JobState": "Completed",
+  "JobType": "FirmwareUpdate",
+  "Message": "Job completed successfully.",
+  "MessageArgs": [],
+  "MessageId": "PR19",
+  "Name": "Firmware Update: iDRAC",
+  "PercentComplete": 100,
+  "StartTime": "TIME_NOW"
+}

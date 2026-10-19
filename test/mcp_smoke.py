@@ -53,6 +53,11 @@ def check(cond, what):
 s = Session()
 names = {t["name"] for t in s.rpc("tools/list", {})["tools"]}
 check("get_health" in names and "power_action" not in names, "read-only by default: no dangerous tools listed")
+check({"list_tasks", "get_task"} <= names and "update_firmware" not in names, "task tools are read-only and listed without --allow")
+err, out, _ = s.tool("list_tasks", {"target": "r750"})
+check(not err and [t["id"] for t in out["data"]["tasks"]][:1] == ["JID_003"], "list_tasks: Dell job queue, unfinished first")
+err, out, _ = s.tool("get_task", {"target": "r750", "task_id": "JID_002", "wait_seconds": 30})
+check(not err and out["verdict"] == "failed" and "signature" in out["task"]["message"], f"get_task waits and reports the failure {json.dumps(out)[:160]}")
 err, out, _ = s.tool("get_health", {"targets": ["all"]})
 overall = {r["target"]: (r.get("data") or {}).get("overall") for r in out["results"]}
 check(overall.get("r750") == "Critical" and overall.get("sr650") == "OK", f"fleet health over MCP {overall}")
@@ -62,6 +67,14 @@ err, out, _ = s.tool("get_inventory", {"targets": ["x11", "sr650"]})
 acct = {r["target"]: (r.get("data") or {}).get("account") or {} for r in out["results"]}
 check(acct["x11"].get("role") == "Operator" and acct["x11"].get("warning") and acct["sr650"].get("role") == "ReadOnly"
       and not acct["sr650"].get("warning"), f"get_inventory reports account privilege and warns {acct}")
+s.close()
+
+s = Session("--allow", "firmware")
+args = {"target": "dmtf", "image_uri": "http://10.0.0.1/bios.bin", "wait_seconds": 30}
+err, plan, _ = s.tool("update_firmware", args)
+check(not err and plan["status"] == "confirmation_required", "update_firmware with wait_seconds still plans first")
+err, done, text = s.tool("update_firmware", {**args, "confirm_token": plan["confirm_token"]})
+check(not err and done["status"] == "done" and done["task"]["verdict"] == "no-task", f"confirmed update_firmware + wait returns the task verdict: {text[:160]}")
 s.close()
 
 s = Session("--allow", "power")

@@ -1,0 +1,18 @@
+{
+  "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+  "@odata.type": "#Task.v1_7_3.Task",
+  "Id": "1",
+  "Messages": [
+    {
+      "Message": "The task with Id '1' has started.",
+      "MessageId": "TaskEvent.1.0.TaskStarted",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    }
+  ],
+  "Name": "Task 1",
+  "PercentComplete": 80,
+  "StartTime": "2026-10-19T02:10:00Z",
+  "TaskState": "Running",
+  "TaskStatus": "OK"
+}

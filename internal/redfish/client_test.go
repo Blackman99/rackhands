@@ -3,6 +3,7 @@ package redfish
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -65,5 +66,39 @@ func TestBadAddress(t *testing.T) {
 	c, _ := New(Options{BaseURL: "10.1.2.3:8443"})
 	if c.Host() != "10.1.2.3:8443" {
 		t.Fatal(c.Host())
+	}
+}
+
+// A BMC that restarts (e.g. to apply its own firmware) forgets every
+// session; the next request must log in again instead of failing.
+func TestSessionReloginAfterBMCRestart(t *testing.T) {
+	logins := 0
+	valid := ""
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == "POST" && r.URL.Path == "/redfish/v1/SessionService/Sessions":
+			logins++
+			valid = fmt.Sprintf("tok%d", logins)
+			w.Header().Set("X-Auth-Token", valid)
+			w.WriteHeader(201)
+		case r.Header.Get("X-Auth-Token") != valid:
+			w.WriteHeader(401)
+		default:
+			_, _ = w.Write([]byte(`{"TaskState":"Running"}`))
+		}
+	}))
+	defer srv.Close()
+	c, _ := New(Options{BaseURL: srv.URL, Username: "u", Password: "p", Session: true})
+	ctx := context.Background()
+	if _, err := c.Get(ctx, "/redfish/v1/TaskService/Tasks/1"); err != nil {
+		t.Fatal(err)
+	}
+	valid = "after-restart" // the BMC rebooted
+	if o, err := c.Get(ctx, "/redfish/v1/TaskService/Tasks/1"); err != nil || o.Str("TaskState") != "Running" || logins != 2 {
+		t.Fatalf("%v %v logins=%d", err, o, logins)
+	}
+	bad, _ := New(Options{BaseURL: srv.URL, Username: "u", Password: "p"})
+	if _, err := bad.Get(ctx, "/x"); !IsStatus(err, 401) {
+		t.Fatalf("basic auth 401 must surface: %v", err)
 	}
 }

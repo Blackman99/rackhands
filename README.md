@@ -47,6 +47,18 @@ Targets live in `~/.config/rackhands/targets.yaml` ([example](examples/targets.y
 
 Every plan and execution is appended to an audit log. `--dry-run` shows the exact request and stops.
 
+**Watching a firmware update:** add `--wait` and rackhands follows the task the BMC returns until it ends. It reads the Redfish Task or task monitor, the iDRAC job on Dell, and the UpdateService flash state on HPE iLO 5. It keeps polling while the BMC restarts to apply its own firmware and stops at `wait_timeout` (default 30m). Ctrl-C stops the watching, not the update. The outcome (state, BMC-side duration) goes into the audit log next to the execution. `--wait` opens no gate: the update still needs `--allow firmware`, `allow:` and the confirmation.
+
+```console
+$ rackhands --allow firmware firmware-update db-01 https://repo/iDRAC.EXE --yes db-01 --wait
+SENT  db-01: accepted (HTTP 202), task /redfish/v1/TaskService/Tasks/JID_001
+      watching JID_001 until it ends (at most 30m; Ctrl-C stops watching, not the update)
+WAIT  db-01 JID_001  Running      40% ████░░░░░░  Installing the iDRAC firmware package.  12s
+DONE  db-01: JID_001 completed in 3m02s — Job completed successfully.
+```
+
+`rackhands task TARGET` lists tasks and jobs, and `rackhands task TARGET ID --wait` watches one. Both are read-only and need no `--allow`. A Dell job scheduled for the next reboot ends as `STAGED` (exit 0). A failed, cancelled or timed-out task exits 4, and the last line says why and what to run next.
+
 **For agents:** `rackhands mcp` is an MCP server on stdio. It is read-only by default. Dangerous tools are not even listed unless their class is allowed.
 
 > **Defence in depth: give the agent a read-only BMC account.** rackhands' gate lives in rackhands. The strongest guarantee lives in the BMC: an account with the Redfish `ReadOnly` role (iLO: no Virtual Power and Reset / iLO Config privileges) or IPMI `User` privilege cannot power anything off, whatever runs with it. Every read command works with such an account. Keep a separate, privileged config for humans. `rackhands inventory` (and the MCP `get_inventory` tool) shows the effective privilege of the account each target logs in with, read-only, and warns when a target with no dangerous `allow:` classes logs in as Operator or Administrator:

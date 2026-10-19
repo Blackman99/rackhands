@@ -1,0 +1,17 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs",
+  "@odata.type": "#JobCollection.JobCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_001"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_002"
+    },
+    {
+      "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_003"
+    }
+  ],
+  "Members@odata.count": 3,
+  "Name": "JobQueue"
+}

@@ -126,6 +126,32 @@ R --allow all --json firmware-update dmtf http://10.0.0.1/bios.bin --yes dmtf | 
 set +e; R --allow all firmware-update x11 http://10.0.0.1/bmc.bin --yes x11 >/dev/null 2>&1; c5=$?; set -e
 expect "unsupported operation is reported, not attempted" test $c5 -eq 3 -o $c5 -eq 2
 
+# --- tasks and jobs (read-only; the mockup server serves each task's final state)
+R task r750 >"$WORK/tasks.txt"
+expect "Dell job queue + TaskService, running first" sh -c "sed -n 3p \"$WORK/tasks.txt\" | grep -q '^JID_003 .*Scheduled'"
+set +e
+R task r750 JID_002 --wait >"$WORK/t-fail.txt" 2>&1; c6=$?
+R task r750 JID_003 --wait >"$WORK/t-staged.txt" 2>&1; c7=$?
+R task sr650 2 --wait >/dev/null 2>&1; c8=$?
+R task x11 >/dev/null 2>&1; c9=$?
+R task sim >"$WORK/t-ipmi.txt" 2>&1; c10=$?
+R task r750 JID_404 >"$WORK/t-404.txt" 2>&1; c11=$?
+set -e
+expect "failed Dell job exits 4 and says why" sh -c "test $c6 -eq 4 && grep -q 'FAILED  r750: JID_002 failed .*signature' \"$WORK/t-fail.txt\""
+expect "Dell job scheduled for the next reboot is STAGED, exit 0" sh -c "test $c7 -eq 0 && grep -q 'STAGED  r750: JID_003' \"$WORK/t-staged.txt\""
+expect "Lenovo task in Exception exits 4" test $c8 -eq 4
+expect "BMC without a TaskService: unsupported, exit 2" test $c9 -eq 2
+expect "IPMI-only target: tasks need Redfish" sh -c "test $c10 -eq 2 && grep -q 'need Redfish' \"$WORK/t-ipmi.txt\""
+expect "unknown task id is a clear error" sh -c "test $c11 -eq 2 && grep -q 'list them with' \"$WORK/t-404.txt\""
+expect "Lenovo task monitor resolves to its Task" test "$(R --json task sr650 /redfish/v1/TaskService/TaskMonitors/1 --wait | jq -r '.verdict + " " + .task.uri')" = "completed /redfish/v1/TaskService/Tasks/1"
+expect "DMTF task 545 completed with its warning message" test "$(R --json task dmtf 545 | jq -r '.data.phase + " " + .data.health')" = "completed Warning"
+expect "watching needs no --allow and writes nothing to the audit log" test "$(grep -c '"phase":"task"' "$WORK/audit.jsonl" || true)" -eq 0
+R --allow firmware --json firmware-update dmtf http://10.0.0.1/bios.bin --yes dmtf --wait >"$WORK/fw-wait.json"
+expect "firmware-update --wait without a returned task: verdict no-task" test "$(jq -r '.task.verdict' "$WORK/fw-wait.json")" = "no-task"
+expect "the watched outcome is audited (phase task)" grep -q '"phase":"task".*"verdict":"no-task"' "$WORK/audit.jsonl"
+set +e; R firmware-update dmtf http://10.0.0.1/bios.bin --yes dmtf --wait >/dev/null 2>&1; c12=$?; set -e
+expect "--wait does not open the firmware gate" test $c12 -eq 3
+
 R --allow power power sim force-off --yes sim >/dev/null
 expect "IPMI chassis power off" test "$(R --json power sim | jq -r '.[0].data')" = "Off"
 R --allow power power sim on --yes sim >/dev/null

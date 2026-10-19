@@ -1,0 +1,31 @@
+{
+  "@odata.id": "/redfish/v1/TaskService/Tasks/1",
+  "@odata.type": "#Task.v1_7_3.Task",
+  "EndTime": "2026-10-19T02:16:41Z",
+  "Id": "1",
+  "Messages": [
+    {
+      "Message": "The task with Id '1' has started.",
+      "MessageId": "TaskEvent.1.0.TaskStarted",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    },
+    {
+      "Message": "The target device 'UEFI' has been successfully updated with image 'lnvgy_fw_uefi_afe130k-1.90.uxz'.",
+      "MessageId": "Update.1.1.UpdateSuccessful",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    },
+    {
+      "Message": "The task with Id '1' has completed.",
+      "MessageId": "TaskEvent.1.0.TaskCompletedOK",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    }
+  ],
+  "Name": "Task 1",
+  "PercentComplete": 100,
+  "StartTime": "2026-10-19T02:10:00Z",
+  "TaskState": "Completed",
+  "TaskStatus": "OK"
+}

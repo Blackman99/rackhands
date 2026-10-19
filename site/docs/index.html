@@ -40,6 +40,7 @@
     <li><a href="#config">targets.yaml</a></li>
     <li><a href="#reads">Read commands</a></li>
     <li><a href="#danger">Dangerous operations</a></li>
+    <li><a href="#tasks">Firmware tasks</a></li>
     <li><a href="#safety">The safety model</a></li>
     <li><a href="#mcp">MCP server</a></li>
     <li><a href="#vendors">Vendor notes</a></li>
@@ -94,6 +95,7 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <tr><td>allow</td><td>Dangerous classes this machine may receive: <code>power</code>, <code>boot</code>, <code>bmc-reset</code>, <code>firmware</code>, <code>virtual-media</code> or <code>all</code>.</td></tr>
 <tr><td>tags</td><td>Lets you select machines with <code>tag:NAME</code> in read commands.</td></tr>
 <tr><td>timeout</td><td>Per-request timeout, e.g. <code>20s</code> (the default). A whole command against one BMC gets three times this.</td></tr>
+<tr><td>wait_timeout</td><td>How long <code>--wait</code> follows a task before it stops watching, e.g. <code>45m</code>. Default <code>30m</code>. <code>--wait-timeout</code> overrides it for one run. The task itself keeps running on the BMC.</td></tr>
 </tbody></table>
 
 <h2 id="reads">Read commands</h2>
@@ -109,6 +111,7 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <tr><td>rackhands events T [-n 30] [--min warning] [--all-logs]</td><td>Newest entries of the hardware event log, newest first, with normalised severity. <code>--all-logs</code> adds the Lifecycle and audit logs.</td></tr>
 <tr><td>rackhands firmware T</td><td>Installed firmware versions. Staged and previous copies are hidden.</td></tr>
 <tr><td>rackhands boot T</td><td>Boot order (with display names), current override, and allowed override targets.</td></tr>
+<tr><td>rackhands task T [ID] [--wait]</td><td>BMC tasks and jobs: Redfish TaskService tasks, the iDRAC job queue, the iLO 5 flash state. Unfinished first. With an ID (<code>JID_…</code>, a task number, a task or task monitor URI, or <code>ilo-flash</code>), one task in detail. <code>--wait</code> follows it until it ends (see <a href="#tasks">firmware tasks</a>). Needs no <code>--allow</code>.</td></tr>
 <tr><td>rackhands vendors</td><td>The vendor quirks rackhands handles.</td></tr>
 <tr><td>rackhands tls-fingerprint T</td><td>Print the BMC leaf certificate SHA-256 (also <code>rackhands pin T</code>) so you can paste it into <code>tls_fingerprint:</code>. Read-only TLS probe; no BMC login.</td></tr>
 </tbody></table>
@@ -120,7 +123,7 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <tr><td>power</td><td>rackhands power T on|off|force-off|restart|force-restart|cycle|nmi</td><td>ComputerSystem.Reset, mapped to what the BMC lists in AllowableValues</td><td>Chassis Control</td></tr>
 <tr><td>boot</td><td>rackhands boot T --override pxe|cd|hdd|bios|none [--persistent]</td><td>PATCH Boot (If-Match ETag)</td><td>Set System Boot Options (EFI)</td></tr>
 <tr><td>bmc-reset</td><td>rackhands bmc-reset T</td><td>Manager.Reset (GracefulRestart, or no body on iLO)</td><td>BMC Cold Reset</td></tr>
-<tr><td>firmware</td><td>rackhands firmware-update T IMAGE_URL</td><td>UpdateService.SimpleUpdate with ImageURI</td><td>n/a</td></tr>
+<tr><td>firmware</td><td>rackhands firmware-update T IMAGE_URL [--wait]</td><td>UpdateService.SimpleUpdate with ImageURI</td><td>n/a</td></tr>
 <tr><td>virtual-media</td><td>rackhands vmedia T insert ISO_URL | eject</td><td>InsertMedia / EjectMedia, or the iLO OEM actions</td><td>n/a</td></tr>
 </tbody></table>
 <p>Each one prints a plan first: what will be sent, to which URL, with which body, and the current state. Then it asks you to type the target name. In scripts, pass <code>--yes NAME</code> (it must be the exact name of the target). <code>--dry-run</code> prints the plan and stops.</p>
@@ -130,6 +133,40 @@ PLAN  power force-off db-01 (Dell PowerEdge R750, ResetType=ForceOff, currently 
       via redfish
 Type the target name (db-01) to confirm: db-01
 DONE  db-01: accepted (HTTP 204)</pre>
+
+<h2 id="tasks">Firmware tasks</h2>
+<p>A BMC accepts a firmware update in seconds and spends the next minutes, sometimes half an hour, downloading, verifying and flashing it. <code>--wait</code> follows that work until it ends. Watching only reads, but it does not loosen the update: <code>firmware-update … --wait</code> still needs <code>--allow firmware</code>, the target's <code>allow:</code> and the confirmation. <code>--dry-run</code> shows the watch in the plan and sends nothing.</p>
+<pre class="term"><span class="pr">$</span> rackhands --allow firmware firmware-update db-01 https://repo/iDRAC.EXE --yes db-01 --wait
+SENT  db-01: accepted (HTTP 202), task /redfish/v1/TaskService/Tasks/JID_001
+      watching JID_001 until it ends (at most 30m; Ctrl-C stops watching, not the update)
+WAIT  db-01 JID_001  Running      40% ████░░░░░░  Installing the iDRAC firmware package.  12s
+DONE  db-01: JID_001 completed in 3m02s — Job completed successfully.
+<span class="pr">$</span> rackhands task db-01
+db-01  via redfish
+ID       KIND       STATE      %     NAME                              MESSAGE
+JID_003  iDRAC job  Scheduled  0%    Firmware Update: BIOS             Task successfully scheduled.
+JID_002  iDRAC job  Failed     0%    Firmware Update: PERC H755 Front  Unable to verify Update Package signature.
+JID_001  iDRAC job  Completed  100%  Firmware Update: iDRAC            Job completed successfully.</pre>
+<p>On a terminal the <code>WAIT</code> line rewrites itself; in a log you get one line per change. rackhands polls every 2 seconds, backs off to 15 seconds while nothing changes, and honours <code>Retry-After</code>. A BMC that stops answering, or answers 503, while it restarts to apply its own firmware is polled until it comes back, and a lost Redfish session is opened again. Watching ends at <code>wait_timeout</code>.</p>
+<table class="ref">
+<thead><tr><th scope="col">BMC</th><th scope="col">What rackhands follows</th></tr></thead>
+<tbody>
+<tr><td>Any DMTF BMC</td><td>The Task in the <code>Location</code> header or the response body. A task monitor (202 while running) is followed to the Task it names. <code>TaskState</code>, <code>PercentComplete</code>, <code>Messages</code>.</td></tr>
+<tr><td>Dell iDRAC 9</td><td>The <code>JID_…</code> task; its <code>Oem.Dell</code> job state wins over <code>TaskState</code>. <code>rackhands task</code> also lists the job queue under <code>Managers/iDRAC.Embedded.1/Jobs</code>.</td></tr>
+<tr><td>HPE iLO 5</td><td>SimpleUpdate returns no task, so rackhands reads <code>Oem.Hpe.State</code> and <code>FlashProgressPercent</code> on UpdateService as the pseudo task <code>ilo-flash</code>. A <code>Complete</code> left over from an earlier flash is ignored.</td></tr>
+<tr><td>Lenovo XCC</td><td>The task monitor under <code>TaskService/TaskMonitors</code>, then its Task.</td></tr>
+</tbody></table>
+<table class="ref">
+<thead><tr><th scope="col">Ends as</th><th scope="col">When</th><th scope="col">Exit</th></tr></thead>
+<tbody>
+<tr><td>DONE</td><td>Completed. A completed task that carries warning messages adds a <code>WARN</code> line.</td><td>0</td></tr>
+<tr><td>STAGED</td><td>Dell job Scheduled or waiting for a reboot. The update applies at the next host restart.</td><td>0</td></tr>
+<tr><td>NO TASK</td><td>The BMC accepted the update but returned nothing to follow.</td><td>0</td></tr>
+<tr><td>FAILED, CANCELLED, BLOCKED</td><td>Exception, Killed or Cancelled, or the task waits for a human (UserIntervention). The last line shows the BMC's message.</td><td>4</td></tr>
+<tr><td>TIMEOUT, GONE</td><td>Still running at the deadline (it keeps running on the BMC; the line says how to keep watching), or the task disappeared.</td><td>4</td></tr>
+<tr><td>STOPPED</td><td>You pressed Ctrl-C. Only the watching stops.</td><td>130</td></tr>
+</tbody></table>
+<p>After a watched update, the audit log gets a <code>task</code> entry with the final state, percent, message, how long rackhands watched and how long the BMC took. Watching an existing task with <code>rackhands task</code> or <code>get_task</code> is a read and is not audited.</p>
 
 <h2 id="safety">The safety model</h2>
 <ol>
@@ -162,23 +199,26 @@ DONE  db-01: accepted (HTTP 204)</pre>
 <tr><td>get_sensors</td><td>target, kind?, only_problems?</td></tr>
 <tr><td>get_event_log</td><td>target, limit?, min_severity?, all_logs?</td></tr>
 <tr><td>get_firmware_inventory, get_boot_config</td><td>target</td></tr>
+<tr><td>list_tasks</td><td>target</td></tr>
+<tr><td>get_task</td><td>target, task_id, wait_seconds? (at most 900)</td></tr>
 <tr><td>power_action (power)</td><td>target, action, confirm_token?</td></tr>
 <tr><td>reset_bmc (bmc-reset)</td><td>target, confirm_token?</td></tr>
 <tr><td>set_boot_override (boot)</td><td>target, boot_target, persistent?, confirm_token?</td></tr>
-<tr><td>update_firmware (firmware)</td><td>target, image_uri, confirm_token?</td></tr>
+<tr><td>update_firmware (firmware)</td><td>target, image_uri, confirm_token?, wait_seconds?</td></tr>
 <tr><td>virtual_media (virtual-media)</td><td>target, action, image?, confirm_token?</td></tr>
 </tbody></table>
 <p>Read tools are annotated <code>readOnlyHint</code>, and dangerous ones <code>destructiveHint</code>. A dangerous tool called without a token returns <code>{"status": "confirmation_required", "plan": …, "confirm_token": …, "next": …}</code>. Called again with the token, it returns <code>{"status": "done", "result": …}</code>. The server instructions tell the agent to show the plan and wait for a human yes. The token makes sure that what runs is exactly what was shown.</p>
+<p>A confirmed <code>update_firmware</code> answers with a <code>task_ref</code> and a <code>next</code> hint for <code>get_task</code>. With <code>wait_seconds</code> it also watches the task and returns <code>{"task": {"verdict", "task", "elapsed_s", …}}</code>. <code>wait_seconds</code> is not part of the confirmed request, so it does not change the token. While a watch runs, the server sends MCP progress notifications (state, percent, message) when the client asked for them.</p>
 
 <h2 id="vendors">Vendor notes</h2>
 <table class="ref">
 <thead><tr><th scope="col">Vendor</th><th scope="col">What rackhands does differently</th></tr></thead>
 <tbody>
-<tr><td>Dell iDRAC 8/9</td><td>Reads the hardware log from <code>Sel</code>, with the Lifecycle log only under <code>--all-logs</code>. Adds the <code>DellSystem</code> subsystem rollups to health. Hides <code>Previous-</code> and <code>Available-</code> firmware copies.</td></tr>
-<tr><td>HPE iLO 4/5/6</td><td>Uses <code>AggregateHealthStatus</code> from <code>Oem.Hpe</code> (or <code>Oem.Hp</code> on iLO 4) for health. Maps IML <code>Oem.Hpe.Severity</code> (Caution becomes Warning). Fetches log entries that are not inlined. Sends <code>Manager.Reset</code> without a ResetType. Uses the OEM virtual media actions. Ignores thresholds reported as 0.</td></tr>
-<tr><td>Lenovo XCC/XCC2</td><td>Reads <code>PlatformLog</code>. Uses the <code>Sensors</code> collection when there is no Thermal/Power. Sends an If-Match ETag on every PATCH; XCC rejects a PATCH without one.</td></tr>
+<tr><td>Dell iDRAC 8/9</td><td>Reads the hardware log from <code>Sel</code>, with the Lifecycle log only under <code>--all-logs</code>. Adds the <code>DellSystem</code> subsystem rollups to health. Hides <code>Previous-</code> and <code>Available-</code> firmware copies. Follows firmware updates through the iDRAC job (<code>JobState</code>), and reports a job scheduled for the next reboot as staged.</td></tr>
+<tr><td>HPE iLO 4/5/6</td><td>Uses <code>AggregateHealthStatus</code> from <code>Oem.Hpe</code> (or <code>Oem.Hp</code> on iLO 4) for health. Maps IML <code>Oem.Hpe.Severity</code> (Caution becomes Warning). Fetches log entries that are not inlined. Sends <code>Manager.Reset</code> without a ResetType. Uses the OEM virtual media actions. Ignores thresholds reported as 0. Follows iLO 5 firmware flashes through <code>Oem.Hpe.State</code> on UpdateService.</td></tr>
+<tr><td>Lenovo XCC/XCC2</td><td>Reads <code>PlatformLog</code>. Uses the <code>Sensors</code> collection when there is no Thermal/Power. Sends an If-Match ETag on every PATCH; XCC rejects a PATCH without one. Follows firmware updates through the task monitor.</td></tr>
 <tr><td>Supermicro X11+</td><td>Reads <code>Log1</code> on the manager. On X11 boards whose virtual media is OEM-only, virtual media is reported as unsupported up front instead of failing halfway.</td></tr>
-<tr><td>Generic DMTF</td><td>Uses the standard schema only: Thermal/Power or Sensors, LogServices with LogEntryType SEL, SimpleUpdate, InsertMedia.</td></tr>
+<tr><td>Generic DMTF</td><td>Uses the standard schema only: Thermal/Power or Sensors, LogServices with LogEntryType SEL, SimpleUpdate, InsertMedia, TaskService.</td></tr>
 </tbody></table>
 <p>Units are normalised (<code>Cel</code> to C, <code>Percent</code> to %), severities map to OK / Warning / Critical, and event times are UTC.</p>
 
@@ -189,16 +229,17 @@ DONE  db-01: accepted (HTTP 204)</pre>
 <h2 id="output">Output and exit codes</h2>
 <p><code>--json</code> prints a list of <code>{"target", "via", "fallback_reason"?, "data"?, "error"?}</code> for fleet reads, and <code>{"target", "via", "data"}</code> for single-target reads. One unreachable BMC does not hide the others: its entry carries an <code>error</code>.</p>
 <table class="ref"><thead><tr><th scope="col">Code</th><th scope="col">Meaning</th></tr></thead><tbody>
-<tr><td>0</td><td>OK</td></tr><tr><td>1</td><td><code>health</code> found something that is not OK</td></tr><tr><td>2</td><td>An error occurred (including any BMC in a fleet read failing)</td></tr><tr><td>3</td><td>Refused, unsupported, or not confirmed; nothing was sent</td></tr></tbody></table>
+<tr><td>0</td><td>OK</td></tr><tr><td>1</td><td><code>health</code> found something that is not OK</td></tr><tr><td>2</td><td>An error occurred (including any BMC in a fleet read failing)</td></tr><tr><td>3</td><td>Refused, unsupported, or not confirmed; nothing was sent</td></tr><tr><td>4</td><td>A watched task did not complete: failed, cancelled, needs a human, vanished, or still running at the deadline</td></tr><tr><td>130</td><td>You stopped watching with Ctrl-C (the task keeps running)</td></tr></tbody></table>
 
 <h2 id="audit">Audit log</h2>
 <p>The audit log is at <code>~/.local/state/rackhands/audit.jsonl</code> by default. Override it with <code>--audit-log FILE</code>, <code>RACKHANDS_AUDIT_LOG</code> or <code>audit_log:</code>, or turn it off with <code>--audit-log off</code>. One JSON object per line:</p>
 <pre class="term">{"time":"2026-10-12T08:14:03Z","actor":"mcp","phase":"planned","op":{"target":"db-01","class":"power","action":"force-off","args":{"via":"redfish"}},"summary":"power force-off db-01 …","method":"POST","path":"/redfish/v1/Systems/…/ComputerSystem.Reset","body":{"ResetType":"ForceOff"}}
-{"time":"2026-10-12T08:14:31Z","actor":"mcp","phase":"executed","op":{…},"result":"accepted (HTTP 204)"}</pre>
-<p>Phases: <code>refused</code>, <code>planned</code>, <code>token-rejected</code>, <code>executed</code>, <code>failed</code>.</p>
+{"time":"2026-10-12T08:14:31Z","actor":"mcp","phase":"executed","op":{…},"result":"accepted (HTTP 204)"}
+{"time":"2026-10-19T02:13:04Z","actor":"cli","phase":"task","op":{"target":"db-01","class":"firmware","action":"update",…},"task":"/redfish/v1/TaskService/Tasks/JID_001","verdict":"completed","task_state":"Completed","percent_complete":100,"message":"Job completed successfully.","watched_s":184.2,"bmc_duration_s":182}</pre>
+<p>Phases: <code>refused</code>, <code>planned</code>, <code>token-rejected</code>, <code>executed</code>, <code>failed</code>, and <code>task</code> (the outcome of a watched firmware update).</p>
 
 <h2 id="testing">How it is tested</h2>
-<p>Unit tests replay vendor mockups (Dell R750, HPE DL380 Gen10, Lenovo SR650 V2, Supermicro X11) through an in-process Redfish server that records every write. CI then runs the real binary (<a href="https://github.com/Blackman99/rackhands/blob/main/test/integration.sh">test/integration.sh</a>) against the DMTF Redfish-Mockup-Server, which serves DMTF's public-rackmount1 mockup and the four vendor mockups, and against OpenIPMI <code>ipmi_sim</code> over a real RMCP+ session. The MCP server is exercised over stdio through the full plan, token and done sequence.</p>
+<p>Unit tests replay vendor mockups (Dell R750, HPE DL380 Gen10, Lenovo SR650 V2, Supermicro X11) through an in-process Redfish server that records every write. Task resources in the mockups carry the states a running task goes through, so a firmware update can be followed from 0% to the end, including a BMC that drops off the network mid-flash. CI then runs the real binary (<a href="https://github.com/Blackman99/rackhands/blob/main/test/integration.sh">test/integration.sh</a>) against the DMTF Redfish-Mockup-Server, which serves DMTF's public-rackmount1 mockup and the four vendor mockups, and against OpenIPMI <code>ipmi_sim</code> over a real RMCP+ session. The MCP server is exercised over stdio through the full plan, token and done sequence.</p>
 
 <h2 id="faq">FAQ</h2>
 <p><strong>Why not just give the agent <code>ipmitool</code> or <code>curl</code>?</strong> Because nothing stands between "check the fans" and <code>chassis power off</code>. rackhands gives the agent the reads and nothing else unless you open a class, and even then a human approves each request.</p>

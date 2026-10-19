@@ -150,7 +150,15 @@ type Plan struct {
 	Body    map[string]any `json:"body,omitempty"`
 	Current string         `json:"current,omitempty"`
 	exec    func(context.Context) (string, error)
+	// Set by executors whose request starts a BMC task (firmware update).
+	task   string
+	before *Task
 }
+
+// Task is what to watch after Execute: a task / task monitor URI, the
+// ILOFlash pseudo task, or "" when the BMC returned nothing to follow.
+// before is the state seen at plan time (iLO), see WatchOptions.Before.
+func (p *Plan) Task() (ref string, before *Task) { return p.task, p.before }
 
 // Execute runs the planned request.
 func (p *Plan) Execute(ctx context.Context) (string, error) {
@@ -185,5 +193,9 @@ type Backend interface {
 	PlanBootOverride(ctx context.Context, target string, persistent bool) (*Plan, error)
 	PlanFirmwareUpdate(ctx context.Context, imageURI string) (*Plan, error)
 	PlanVirtualMedia(ctx context.Context, image string, eject bool) (*Plan, error)
+
+	// Tasks lists BMC tasks / jobs; Task reads one (read-only, no class needed).
+	Tasks(ctx context.Context) ([]Task, error)
+	Task(ctx context.Context, ref string) (*Task, error)
 	Close(ctx context.Context)
 }

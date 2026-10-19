@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -239,9 +240,17 @@ func (a *App) Run(ctx context.Context, actor string, d Danger, p *Planned) (stri
 // Confirm re-plans against current state, redeems the token, and executes
 // (MCP path: the token proves a human saw this exact plan).
 func (a *App) Confirm(ctx context.Context, actor string, d Danger, token string) (*Planned, string, error) {
+	p, res, _, err := a.ConfirmFollow(ctx, actor, d, token, nil)
+	return p, res, err
+}
+
+// ConfirmFollow is Confirm, then (when follow is set and the request
+// started a BMC task) Follow on the same connection. Waiting is not part of
+// the request the token is bound to: it only reads.
+func (a *App) ConfirmFollow(ctx context.Context, actor string, d Danger, token string, follow *bmc.WatchOptions) (*Planned, string, *bmc.Outcome, error) {
 	p, err := a.Plan(ctx, actor, d, false)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	defer p.Close()
 	t, _ := a.One(d.Target)
@@ -249,10 +258,89 @@ func (a *App) Confirm(ctx context.Context, actor string, d Danger, token string)
 	proto := p.proto
 	if err := a.Tokens.Redeem(d.op(proto), token); err != nil {
 		_ = a.Audit.Record(actor, "token-rejected", d.op(proto), map[string]any{"reason": err.Error()})
-		return p, "", err
+		return p, "", nil, err
 	}
 	res, err := a.Run(ctx, actor, d, p)
-	return p, res, err
+	if err != nil || follow == nil {
+		return p, res, nil, err
+	}
+	out, err := a.Follow(ctx, actor, d, p, *follow)
+	return p, res, out, err
+}
+
+// Follow watches the task an executed plan started (firmware update) until
+// it finishes, fails, or the target's wait_timeout passes, and audits the
+// outcome (verdict, task state, how long it took). It only sends GETs.
+func (a *App) Follow(ctx context.Context, actor string, d Danger, p *Planned, o bmc.WatchOptions) (*bmc.Outcome, error) {
+	t, err := a.One(d.Target)
+	if err != nil {
+		return nil, err
+	}
+	d.Target = t.Name
+	if o.Timeout <= 0 {
+		o.Timeout = t.WaitTimeoutDur()
+	}
+	ref, before := p.Plan.Task()
+	var out *bmc.Outcome
+	if ref == "" {
+		out = &bmc.Outcome{Target: t.Name, Verdict: bmc.VerdictNoTask,
+			Note: fmt.Sprintf("the BMC accepted the request but returned no task to follow; look for it with `rackhands task %s`, check the result with `rackhands firmware %s`", t.Name, t.Name)}
+	} else {
+		var b bmc.Backend
+		if p.conn != nil && p.conn.Primary != nil && p.conn.Primary.Protocol() == "redfish" {
+			b = p.conn.Primary
+		}
+		if b == nil {
+			return nil, fmt.Errorf("%w: following a task needs Redfish", bmc.ErrUnsupported)
+		}
+		o.Before = before
+		out, err = bmc.Watch(ctx, b, t.Name, ref, o)
+		if err != nil {
+			_ = a.Audit.Record(actor, "task", d.op(p.proto), map[string]any{"task": ref, "verdict": "error", "error": err.Error()})
+			return nil, err
+		}
+	}
+	detail := map[string]any{"task": out.Ref, "verdict": out.Verdict, "watched_s": out.Elapsed}
+	if tk := out.Task; tk != nil {
+		detail["task_state"] = tk.State
+		if tk.Percent != nil {
+			detail["percent_complete"] = *tk.Percent
+		}
+		if tk.Message != "" {
+			detail["message"] = tk.Message
+		}
+		if dur := tk.Duration(); dur > 0 {
+			detail["bmc_duration_s"] = dur.Seconds()
+		}
+	}
+	_ = a.Audit.Record(actor, "task", d.op(p.proto), detail)
+	return out, nil
+}
+
+// WatchTask follows an existing task or job read-only: no dangerous class,
+// no confirmation, no audit record. timeout <= 0 means the target's
+// wait_timeout.
+func (a *App) WatchTask(ctx context.Context, target, ref string, o bmc.WatchOptions) (*bmc.Outcome, error) {
+	ts, err := a.Resolve([]string{target})
+	if err != nil {
+		return nil, err
+	}
+	if len(ts) != 1 || target == "all" || strings.HasPrefix(target, "tag:") {
+		return nil, errors.New("watching a task takes one named target")
+	}
+	t := ts[0]
+	if o.Timeout <= 0 {
+		o.Timeout = t.WaitTimeoutDur()
+	}
+	c, err := bmc.Open(t)
+	if err != nil {
+		return nil, err
+	}
+	defer c.Close(context.Background())
+	if c.Primary == nil || c.Primary.Protocol() != "redfish" {
+		return nil, fmt.Errorf("%w: tasks and jobs need Redfish; %s has no redfish: address", bmc.ErrUnsupported, t.Name)
+	}
+	return bmc.Watch(ctx, c.Primary, t.Name, ref, o)
 }
 
 // TargetInfo describes a configured target for listing.

@@ -9,7 +9,7 @@
 
 ## v0.2
 - [x] TLS trust-on-first-use pinning for self-signed BMC certificates (`tls_fingerprint:`) instead of `insecure`
-- Task monitoring for firmware updates (poll the returned Task / Dell job until it completes)
+- [x] Task monitoring for firmware updates (poll the returned Task / Dell job until it completes): `firmware-update --wait`, `rackhands task`, MCP `list_tasks` / `get_task`
 - Storage health (controllers, drives, volumes) in `health`
 - Homebrew tap and Scoop manifest
 

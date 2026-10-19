@@ -3,7 +3,9 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 )
 
 func write(t *testing.T, s string) string {
@@ -103,5 +105,27 @@ func TestTLSFingerprintConfig(t *testing.T) {
 	bad := write(t, `targets: [{name: x, redfish: "https://10.0.0.1", tls_fingerprint: "deadbeef"}]`)
 	if _, err := Load(bad); err == nil {
 		t.Fatal("short fingerprint accepted")
+	}
+}
+
+func TestWaitTimeout(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "t.yaml")
+	_ = os.WriteFile(p, []byte("defaults: {wait_timeout: 45m}\ntargets:\n  - {name: a, redfish: x}\n  - {name: b, redfish: y, wait_timeout: 2h}\n  - {name: c, redfish: z, wait_timeout: \"\"}\n"), 0o600)
+	f, err := Load(p)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a, _ := f.Find("a"); a.WaitTimeoutDur() != 45*time.Minute {
+		t.Fatal(a.WaitTimeoutDur())
+	}
+	if b, _ := f.Find("b"); b.WaitTimeoutDur() != 2*time.Hour {
+		t.Fatal(b.WaitTimeoutDur())
+	}
+	if (&Target{}).WaitTimeoutDur() != DefaultWaitTimeout {
+		t.Fatal("default")
+	}
+	_ = os.WriteFile(p, []byte("targets:\n  - {name: a, redfish: x, wait_timeout: soon}\n"), 0o600)
+	if _, err := Load(p); err == nil || !strings.Contains(err.Error(), "wait_timeout") {
+		t.Fatalf("bad duration accepted: %v", err)
 	}
 }

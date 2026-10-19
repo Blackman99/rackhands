@@ -1,0 +1,35 @@
+{
+  "@odata.id": "/redfish/v1/TaskService/Tasks/JID_001",
+  "@odata.type": "#Task.v1_7_3.Task",
+  "EndTime": "2026-10-19T02:13:02Z",
+  "Id": "JID_001",
+  "Messages": [
+    {
+      "Message": "Job completed successfully.",
+      "MessageId": "IDRAC.2.9.PR19",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    }
+  ],
+  "Name": "Task",
+  "Oem": {
+    "Dell": {
+      "@odata.type": "#DellJob.v1_6_0.DellJob",
+      "CompletionTime": "2026-10-19T02:13:02",
+      "EndTime": "TIME_NA",
+      "Id": "JID_001",
+      "JobState": "Completed",
+      "JobType": "FirmwareUpdate",
+      "Message": "Job completed successfully.",
+      "MessageArgs": [],
+      "MessageId": "PR19",
+      "Name": "Firmware Update: iDRAC",
+      "PercentComplete": 100,
+      "StartTime": "TIME_NOW"
+    }
+  },
+  "PercentComplete": 100,
+  "StartTime": "2026-10-19T02:10:00Z",
+  "TaskState": "Completed",
+  "TaskStatus": "OK"
+}

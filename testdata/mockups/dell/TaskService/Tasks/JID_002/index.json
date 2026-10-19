@@ -1,0 +1,35 @@
+{
+  "@odata.id": "/redfish/v1/TaskService/Tasks/JID_002",
+  "@odata.type": "#Task.v1_7_3.Task",
+  "EndTime": "2026-10-19T01:41:12Z",
+  "Id": "JID_002",
+  "Messages": [
+    {
+      "Message": "Unable to verify Update Package signature.",
+      "MessageId": "IDRAC.2.9.RED007",
+      "MessageSeverity": "Critical",
+      "Severity": "Critical"
+    }
+  ],
+  "Name": "Task",
+  "Oem": {
+    "Dell": {
+      "@odata.type": "#DellJob.v1_6_0.DellJob",
+      "CompletionTime": "2026-10-19T02:13:02",
+      "EndTime": "TIME_NA",
+      "Id": "JID_002",
+      "JobState": "Failed",
+      "JobType": "FirmwareUpdate",
+      "Message": "Unable to verify Update Package signature.",
+      "MessageArgs": [],
+      "MessageId": "RED007",
+      "Name": "Firmware Update: PERC H755 Front",
+      "PercentComplete": 0,
+      "StartTime": "TIME_NOW"
+    }
+  },
+  "PercentComplete": 0,
+  "StartTime": "2026-10-19T02:10:00Z",
+  "TaskState": "Exception",
+  "TaskStatus": "Critical"
+}

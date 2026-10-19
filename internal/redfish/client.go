@@ -179,24 +179,40 @@ type Response struct {
 	Location string
 }
 
-// Do sends a request with JSON body (nil for none) and extra headers.
+// Do sends a request with JSON body (nil for none) and extra headers. With
+// session auth, a 401 on a token that used to work (the BMC restarted, e.g.
+// to apply its own firmware, and forgot every session) logs in once more and
+// retries the request once.
 func (c *Client) Do(ctx context.Context, method, path string, body any, hdr map[string]string) (*Response, error) {
+	r, tok, err := c.do(ctx, method, path, body, hdr)
+	if c.opt.Session && tok != "" && IsStatus(err, http.StatusUnauthorized) {
+		c.mu.Lock()
+		if c.token == tok {
+			c.token, c.sess = "", ""
+		}
+		c.mu.Unlock()
+		r, _, err = c.do(ctx, method, path, body, hdr)
+	}
+	return r, err
+}
+
+func (c *Client) do(ctx context.Context, method, path string, body any, hdr map[string]string) (*Response, string, error) {
 	if c.opt.Session {
 		if err := c.login(ctx); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 	var rd io.Reader
 	if body != nil {
 		b, err := json.Marshal(body)
 		if err != nil {
-			return nil, err
+			return nil, "", err
 		}
 		rd = bytes.NewReader(b)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.url(path), rd)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("OData-Version", "4.0")
@@ -216,18 +232,35 @@ func (c *Client) Do(ctx context.Context, method, path string, body any, hdr map[
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnreachable, err)
+		return nil, tok, fmt.Errorf("%w: %v", ErrUnreachable, err)
 	}
 	defer resp.Body.Close()
 	data, err := io.ReadAll(io.LimitReader(resp.Body, 32<<20))
 	if err != nil {
-		return nil, fmt.Errorf("%w: %v", ErrUnreachable, err)
+		return nil, tok, fmt.Errorf("%w: %v", ErrUnreachable, err)
 	}
 	r := &Response{Status: resp.StatusCode, Header: resp.Header, Body: data, Location: resp.Header.Get("Location")}
 	if resp.StatusCode/100 != 2 {
-		return r, &HTTPError{Method: method, Path: path, Status: resp.StatusCode, Message: extendedMessage(data)}
+		return r, tok, &HTTPError{Method: method, Path: path, Status: resp.StatusCode, Message: extendedMessage(data)}
 	}
-	return r, nil
+	return r, tok, nil
+}
+
+// ExtendedMessage is the human message of a Redfish error or
+// @Message.ExtendedInfo body ("" if there is none).
+func ExtendedMessage(b []byte) string {
+	if m := extendedMessage(b); m != "" {
+		return m
+	}
+	var ok struct {
+		Ext []struct {
+			Message string `json:"Message"`
+		} `json:"@Message.ExtendedInfo"`
+	}
+	if json.Unmarshal(b, &ok) == nil && len(ok.Ext) > 0 {
+		return ok.Ext[0].Message
+	}
+	return ""
 }
 
 // extendedMessage pulls the human message out of a Redfish error body.
@@ -267,11 +300,20 @@ func (c *Client) Get(ctx context.Context, path string) (Object, error) {
 
 // Members follows a collection and fetches every member (bounded concurrency).
 func (c *Client) Members(ctx context.Context, path string) ([]Object, error) {
+	return c.MembersN(ctx, path, 0)
+}
+
+// MembersN is Members limited to the last n members (n <= 0: all). Job
+// queues keep hundreds of finished entries; the newest are last.
+func (c *Client) MembersN(ctx context.Context, path string, n int) ([]Object, error) {
 	col, err := c.Get(ctx, path)
 	if err != nil {
 		return nil, err
 	}
 	refs := col.Refs("Members")
+	if n > 0 && len(refs) > n {
+		refs = refs[len(refs)-n:]
+	}
 	out := make([]Object, len(refs))
 	errs := make([]error, len(refs))
 	sem := make(chan struct{}, 4)

@@ -3,6 +3,7 @@ defaults:
   username: rackhands-ro          # a read-only BMC account is enough for every read command
   password_env: BMC_PASSWORD      # or password_file: ~/.config/rackhands/bmc.pass
   timeout: 20s
+  wait_timeout: 30m               # how long --wait follows a firmware task before giving up watching
   # insecure: true is the default because BMCs ship self-signed certificates.
   # Prefer tls_fingerprint: (SHA-256 of the leaf cert) over insecure: true —
   # get it with: rackhands tls-fingerprint TARGET
@@ -13,7 +14,8 @@ targets:
     redfish: https://10.20.0.11   # Dell iDRAC9
     ipmi: 10.20.0.11              # fallback when Redfish is down or missing a feature
     tags: [prod, db]
-    allow: [power]                # second key: this box may be power-cycled (with --allow power)
+    allow: [power, firmware]      # second key: this box may be power-cycled / flashed (with --allow ...)
+    wait_timeout: 45m             # per-target override for a slow flash
 
   - name: web-07
     redfish: https://10.20.0.27   # HPE iLO 5

@@ -1,0 +1,15 @@
+{
+  "@odata.id": "/redfish/v1/Managers/iDRAC.Embedded.1/Jobs/JID_003",
+  "@odata.type": "#DellJob.v1_6_0.DellJob",
+  "CompletionTime": null,
+  "EndTime": "TIME_NA",
+  "Id": "JID_003",
+  "JobState": "Scheduled",
+  "JobType": "FirmwareUpdate",
+  "Message": "Task successfully scheduled.",
+  "MessageArgs": [],
+  "MessageId": "JCP001",
+  "Name": "Firmware Update: BIOS",
+  "PercentComplete": 0,
+  "StartTime": "TIME_NOW"
+}

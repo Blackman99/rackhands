@@ -1,0 +1,31 @@
+{
+  "@odata.id": "/redfish/v1/TaskService/Tasks/2",
+  "@odata.type": "#Task.v1_7_3.Task",
+  "EndTime": "2026-10-18T22:02:51Z",
+  "Id": "2",
+  "Messages": [
+    {
+      "Message": "The task with Id '2' has started.",
+      "MessageId": "TaskEvent.1.0.TaskStarted",
+      "MessageSeverity": "OK",
+      "Severity": "OK"
+    },
+    {
+      "Message": "Verification of image 'lnvgy_fw_xcc_uhc832d-2.20.uxz' at 'BMC-Primary' failed.",
+      "MessageId": "Update.1.1.VerificationFailed",
+      "MessageSeverity": "Critical",
+      "Severity": "Critical"
+    },
+    {
+      "Message": "The task with Id '2' has been aborted.",
+      "MessageId": "TaskEvent.1.0.TaskAborted",
+      "MessageSeverity": "Critical",
+      "Severity": "Critical"
+    }
+  ],
+  "Name": "Task 2",
+  "PercentComplete": 12,
+  "StartTime": "2026-10-18T22:02:10Z",
+  "TaskState": "Exception",
+  "TaskStatus": "Critical"
+}

@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -63,9 +64,16 @@ type BootIn struct {
 }
 
 type FirmwareIn struct {
-	Target   string `json:"target" jsonschema:"one target name"`
-	ImageURI string `json:"image_uri" jsonschema:"http(s)/nfs/cifs URL of the firmware package that the BMC can reach"`
+	Target      string `json:"target" jsonschema:"one target name"`
+	ImageURI    string `json:"image_uri" jsonschema:"http(s)/nfs/cifs URL of the firmware package that the BMC can reach"`
+	WaitSeconds int    `json:"wait_seconds,omitempty" jsonschema:"after the confirmed call, follow the BMC task for up to this many seconds (0 = return at once; max 900). Not part of the confirmed request."`
 	confirmIn
+}
+
+type TaskIn struct {
+	Target      string `json:"target" jsonschema:"target name from list_targets"`
+	TaskID      string `json:"task_id" jsonschema:"id from list_tasks (e.g. JID_123456789012, 7, ilo-flash) or a task / task monitor URI"`
+	WaitSeconds int    `json:"wait_seconds,omitempty" jsonschema:"poll until the task ends or this many seconds pass (0 = one snapshot; max 900). Keep it under your client's tool timeout and call again to keep watching."`
 }
 
 type VMediaIn struct {
@@ -184,6 +192,30 @@ func New(a *app.App, version string) *mcp.Server {
 				return bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.Boot, error) { return b.Boot(ctx) })
 			})
 		})
+	mcp.AddTool(s, &mcp.Tool{Name: "list_tasks", Description: "BMC tasks and jobs on one server: Redfish TaskService tasks, the Dell iDRAC job queue, the HPE iLO 5 flash state. Unfinished first. Read-only.", Annotations: ro("List BMC tasks")},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in OneIn) (*mcp.CallToolResult, any, error) {
+			return single(ctx, a, in.Target, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
+				ts, via, err := bmc.Call(ctx, c, func(b bmc.Backend) ([]bmc.Task, error) { return b.Tasks(ctx) })
+				return map[string]any{"tasks": ts}, via, err
+			})
+		})
+	mcp.AddTool(s, &mcp.Tool{Name: "get_task", Description: "One BMC task or job (state, phase, percent, messages), e.g. the task a firmware update started. With wait_seconds, polls until it completes, fails, is staged for the next reboot (phase scheduled), or the time is up. Read-only: needs no dangerous class.", Annotations: ro("BMC task")},
+		func(ctx context.Context, req *mcp.CallToolRequest, in TaskIn) (*mcp.CallToolResult, any, error) {
+			if in.TaskID == "" {
+				return nil, nil, fmt.Errorf("task_id is required (see list_tasks)")
+			}
+			if in.WaitSeconds <= 0 {
+				return single(ctx, a, in.Target, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
+					t, via, err := bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.Task, error) { return b.Task(ctx, in.TaskID) })
+					return map[string]any{"task": t}, via, err
+				})
+			}
+			out, err := a.WatchTask(ctx, in.Target, in.TaskID, watchOpts(ctx, req, in.WaitSeconds))
+			if err != nil {
+				return nil, nil, err
+			}
+			return nil, outcome(out), nil
+		})
 
 	p := a.Policy
 	if p.Enabled("power") {
@@ -207,8 +239,23 @@ func New(a *app.App, version string) *mcp.Server {
 	}
 	if p.Enabled("firmware") {
 		mcp.AddTool(s, &mcp.Tool{Name: "update_firmware", Description: "DANGEROUS. Push a firmware package to the BMC via Redfish SimpleUpdate. Two-step confirm.", Annotations: danger("Firmware update")},
-			func(ctx context.Context, _ *mcp.CallToolRequest, in FirmwareIn) (*mcp.CallToolResult, any, error) {
-				return twoStep(ctx, a, app.Danger{Target: in.Target, Class: "firmware", Action: "update", Args: map[string]string{"image_uri": in.ImageURI}}, in.ConfirmToken)
+			func(ctx context.Context, req *mcp.CallToolRequest, in FirmwareIn) (*mcp.CallToolResult, any, error) {
+				d := app.Danger{Target: in.Target, Class: "firmware", Action: "update", Args: map[string]string{"image_uri": in.ImageURI}}
+				if in.ConfirmToken == "" || in.WaitSeconds <= 0 {
+					res, out, err := twoStep(ctx, a, d, in.ConfirmToken)
+					if m, ok := out.(map[string]any); ok && err == nil && m["status"] == "done" {
+						if ref, _ := m["task_ref"].(string); ref != "" {
+							m["next"] = fmt.Sprintf("The BMC is applying it. Follow it read-only with get_task {target: %q, task_id: %q, wait_seconds: 60}.", in.Target, bmc.ShortRef(ref))
+						}
+					}
+					return res, out, err
+				}
+				w := watchOpts(ctx, req, in.WaitSeconds)
+				p, res, follow, err := a.ConfirmFollow(ctx, "mcp", d, in.ConfirmToken, &w)
+				if err != nil {
+					return nil, nil, err
+				}
+				return nil, map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res, "task": outcome(follow)}, nil
 			})
 	}
 	if p.Enabled("virtual-media") {
@@ -243,5 +290,64 @@ func twoStep(ctx context.Context, a *app.App, d app.Danger, token string) (*mcp.
 	if err != nil {
 		return nil, nil, err
 	}
-	return nil, map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res}, nil
+	out := map[string]any{"status": "done", "summary": p.Plan.Summary, "via": p.Via, "result": res}
+	if ref, _ := p.Plan.Task(); ref != "" {
+		out["task_ref"] = ref
+	}
+	return nil, out, nil
+}
+
+// maxWait caps one MCP call that watches a task.
+const maxWait = 900 * time.Second
+
+// Poll cadence while watching (tests shorten it).
+var pollEvery, pollMax = 2 * time.Second, 15 * time.Second
+
+// watchOpts bounds a watch to wait_seconds and reports progress to clients
+// that asked for it (the progress value is the poll count, so it always
+// increases; the message carries state and percent).
+func watchOpts(ctx context.Context, req *mcp.CallToolRequest, waitSeconds int) bmc.WatchOptions {
+	d := min(time.Duration(waitSeconds)*time.Second, maxWait)
+	w := bmc.WatchOptions{Timeout: d, Every: pollEvery, MaxEvery: pollMax}
+	if req == nil || req.Params == nil || req.Session == nil {
+		return w
+	}
+	token := req.Params.GetProgressToken()
+	if token == nil {
+		return w
+	}
+	w.OnUpdate = func(u bmc.TaskUpdate) {
+		msg := "BMC not answering, retrying"
+		if u.Err == nil && u.Task != nil {
+			msg = u.Task.State
+			if u.Task.Percent != nil {
+				msg += fmt.Sprintf(" %d%%", *u.Task.Percent)
+			}
+			if u.Task.Message != "" {
+				msg += ": " + u.Task.Message
+			}
+		}
+		_ = req.Session.NotifyProgress(ctx, &mcp.ProgressNotificationParams{ProgressToken: token, Progress: float64(u.Polls), Message: msg})
+	}
+	return w
+}
+
+// outcome adds the next step an agent should take to a watch result.
+func outcome(o *bmc.Outcome) map[string]any {
+	if o == nil {
+		return nil
+	}
+	m := map[string]any{"target": o.Target, "task_ref": o.Ref, "verdict": o.Verdict, "task": o.Task, "elapsed_s": o.Elapsed, "polls": o.Polls}
+	if o.Note != "" {
+		m["note"] = o.Note
+	}
+	switch o.Verdict {
+	case bmc.VerdictTimeout:
+		m["next"] = fmt.Sprintf("Still running on the BMC; nothing is wrong yet. Call get_task {target: %q, task_id: %q, wait_seconds: 60} again to keep watching.", o.Target, bmc.ShortRef(o.Ref))
+	case bmc.PhaseScheduled:
+		m["next"] = "Staged: the BMC applies it at the next host reboot. Rebooting is a separate power action that the human must approve."
+	case bmc.PhaseFailed, bmc.PhaseCancelled, bmc.PhaseAttention, bmc.VerdictVanished:
+		m["next"] = "Tell the human the task did not complete and show them the message; do not retry the update on your own."
+	}
+	return m
 }

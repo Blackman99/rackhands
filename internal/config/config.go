@@ -33,6 +33,7 @@ type Target struct {
 	Allow          []string `yaml:"allow"`           // dangerous classes permitted on this target
 	Tags           []string `yaml:"tags"`
 	Timeout        string   `yaml:"timeout"`
+	WaitTimeout    string   `yaml:"wait_timeout"` // deadline for watching a firmware task (default 30m)
 }
 
 // File is the whole config.
@@ -91,6 +92,11 @@ func Load(path string) (*File, error) {
 		if err := ValidateClasses(t.Allow); err != nil {
 			return nil, fmt.Errorf("%s: target %q: %w", path, t.Name, err)
 		}
+		if t.WaitTimeout != "" {
+			if d, err := time.ParseDuration(t.WaitTimeout); err != nil || d <= 0 {
+				return nil, fmt.Errorf("%s: target %q: wait_timeout %q is not a duration (e.g. 45m)", path, t.Name, t.WaitTimeout)
+			}
+		}
 		if t.TLSFingerprint != "" {
 			norm, err := redfish.NormalizeFingerprint(t.TLSFingerprint)
 			if err != nil {
@@ -127,6 +133,9 @@ func (f *File) applyDefaults(t *Target) {
 	}
 	if t.Timeout == "" {
 		t.Timeout = d.Timeout
+	}
+	if t.WaitTimeout == "" {
+		t.WaitTimeout = d.WaitTimeout
 	}
 	if !t.IPMILan15 {
 		t.IPMILan15 = d.IPMILan15
@@ -218,6 +227,18 @@ func (t *Target) TimeoutDur() time.Duration {
 		return d
 	}
 	return 20 * time.Second
+}
+
+// DefaultWaitTimeout bounds a firmware task watch when wait_timeout is unset:
+// long enough for a BMC image (download, verify, flash, BMC restart).
+const DefaultWaitTimeout = 30 * time.Minute
+
+// WaitTimeoutDur parses wait_timeout (default 30m).
+func (t *Target) WaitTimeoutDur() time.Duration {
+	if d, err := time.ParseDuration(t.WaitTimeout); err == nil && d > 0 {
+		return d
+	}
+	return DefaultWaitTimeout
 }
 
 // IPMIAddr splits host[:port].

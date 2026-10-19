@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -23,7 +24,7 @@ func setup(t *testing.T, allow ...string) (*mcp.ClientSession, *testbmc.Server, 
 	audit := filepath.Join(t.TempDir(), "audit.jsonl")
 	a := &app.App{
 		Cfg: &config.File{Targets: []config.Target{
-			{Name: "db-01", Redfish: dell.URL, Allow: []string{"power"}, Tags: []string{"db"}},
+			{Name: "db-01", Redfish: dell.URL, Allow: []string{"power", "firmware"}, Tags: []string{"db"}},
 			{Name: "web-07", Redfish: hpe.URL},
 		}},
 		Policy: safety.Policy{Runtime: safety.ParseAllow(allow)},
@@ -85,7 +86,7 @@ func TestReadOnlyByDefault(t *testing.T) {
 			t.Errorf("%s registered without --allow", n)
 		}
 	}
-	for _, n := range []string{"list_targets", "get_inventory", "get_health", "get_sensors", "get_event_log", "get_power_state", "get_firmware_inventory", "get_boot_config"} {
+	for _, n := range []string{"list_targets", "get_inventory", "get_health", "get_sensors", "get_event_log", "get_power_state", "get_firmware_inventory", "get_boot_config", "list_tasks", "get_task"} {
 		tl, ok := ts[n]
 		if !ok {
 			t.Fatalf("missing %s", n)
@@ -164,5 +165,99 @@ func TestTwoStepPower(t *testing.T) {
 		if !strings.Contains(b, phase) {
 			t.Errorf("audit missing %s", phase)
 		}
+	}
+}
+
+func fastPolls(t *testing.T) {
+	e, m := pollEvery, pollMax
+	pollEvery, pollMax = time.Millisecond, 2*time.Millisecond
+	t.Cleanup(func() { pollEvery, pollMax = e, m })
+}
+
+func TestTasksAreReadOnly(t *testing.T) {
+	fastPolls(t)
+	cs, dell, _ := setup(t) // nothing allowed
+	out, ok := call(t, cs, "list_tasks", map[string]any{"target": "db-01"})
+	s, _ := json.Marshal(out)
+	if !ok || !strings.Contains(string(s), `"id":"JID_003"`) || !strings.Contains(string(s), `"phase":"scheduled"`) {
+		t.Fatalf("%s", s)
+	}
+	out, ok = call(t, cs, "get_task", map[string]any{"target": "db-01", "task_id": "JID_002"})
+	s, _ = json.Marshal(out)
+	if !ok || !strings.Contains(string(s), `"phase":"failed"`) || !strings.Contains(string(s), "Update Package signature") {
+		t.Fatalf("%s", s)
+	}
+	out, ok = call(t, cs, "get_task", map[string]any{"target": "web-07", "task_id": "ilo-flash", "wait_seconds": 30})
+	if !ok || out["verdict"] != "completed" {
+		t.Fatalf("%v", out)
+	}
+	if out, ok := call(t, cs, "get_task", map[string]any{"target": "db-01"}); ok {
+		t.Fatalf("task_id required: %v", out)
+	}
+	if dell.Count() != 0 {
+		t.Fatal("task tools wrote to the BMC")
+	}
+}
+
+func TestGetTaskProgressNotifications(t *testing.T) {
+	fastPolls(t)
+	dell := testbmc.Start(t, "dell")
+	a := &app.App{Cfg: &config.File{Targets: []config.Target{{Name: "db-01", Redfish: dell.URL}}}, Tokens: safety.NewTokens(time.Minute)}
+	ct, st := mcp.NewInMemoryTransports()
+	ctx := context.Background()
+	if _, err := New(a, "test").Connect(ctx, st, nil); err != nil {
+		t.Fatal(err)
+	}
+	var mu sync.Mutex
+	var msgs []string
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "t"}, &mcp.ClientOptions{
+		ProgressNotificationHandler: func(_ context.Context, r *mcp.ProgressNotificationClientRequest) {
+			mu.Lock()
+			msgs = append(msgs, r.Params.Message)
+			mu.Unlock()
+		}}).Connect(ctx, ct, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+	params := &mcp.CallToolParams{Name: "get_task", Arguments: map[string]any{"target": "db-01", "task_id": "/redfish/v1/TaskService/Tasks/JID_001", "wait_seconds": 30}}
+	params.SetProgressToken("p1")
+	res, err := cs.CallTool(ctx, params)
+	if err != nil || res.IsError {
+		t.Fatalf("%v %+v", err, res)
+	}
+	time.Sleep(50 * time.Millisecond)
+	mu.Lock()
+	defer mu.Unlock()
+	if len(msgs) < 3 || !strings.Contains(strings.Join(msgs, "|"), "Running 40%: Installing the iDRAC firmware package.") {
+		t.Fatalf("progress: %q", msgs)
+	}
+}
+
+func TestUpdateFirmwareWait(t *testing.T) {
+	fastPolls(t)
+	cs, dell, audit := setup(t, "firmware")
+	args := map[string]any{"target": "db-01", "image_uri": "https://repo.example/iDRAC.EXE", "wait_seconds": 60}
+	plan, ok := call(t, cs, "update_firmware", args)
+	if !ok || plan["status"] != "confirmation_required" || dell.Count() != 0 {
+		t.Fatalf("wait_seconds must not skip the plan step: %v", plan)
+	}
+	args["confirm_token"] = plan["confirm_token"]
+	args["wait_seconds"] = 30 // waiting is not part of the confirmed request
+	done, ok := call(t, cs, "update_firmware", args)
+	s, _ := json.Marshal(done)
+	if !ok || done["status"] != "done" || !strings.Contains(string(s), `"verdict":"completed"`) || dell.Count() != 1 {
+		t.Fatalf("%s", s)
+	}
+	if b, _ := readFile(audit); !strings.Contains(b, `"phase":"task"`) || !strings.Contains(b, `"verdict":"completed"`) {
+		t.Fatalf("outcome not audited:\n%s", b)
+	}
+	// Without wait_seconds: return at once and say how to follow it.
+	args = map[string]any{"target": "db-01", "image_uri": "https://repo.example/BIOS.EXE"}
+	plan, _ = call(t, cs, "update_firmware", args)
+	args["confirm_token"] = plan["confirm_token"]
+	done, ok = call(t, cs, "update_firmware", args)
+	if next, _ := done["next"].(string); !ok || !strings.Contains(next, `get_task {target: "db-01", task_id: "JID_001"`) {
+		t.Fatalf("%v", done)
 	}
 }

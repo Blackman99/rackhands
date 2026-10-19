@@ -457,6 +457,16 @@ func (b *IPMI) PlanFirmwareUpdate(context.Context, string) (*Plan, error) {
 	return nil, fmt.Errorf("%w: firmware update needs Redfish", ErrUnsupported)
 }
 
+// Tasks implements Backend: IPMI has no task model.
+func (b *IPMI) Tasks(context.Context) ([]Task, error) {
+	return nil, fmt.Errorf("%w: tasks and jobs need Redfish", ErrUnsupported)
+}
+
+// Task implements Backend.
+func (b *IPMI) Task(context.Context, string) (*Task, error) {
+	return nil, fmt.Errorf("%w: tasks and jobs need Redfish", ErrUnsupported)
+}
+
 func (b *IPMI) PlanVirtualMedia(context.Context, string, bool) (*Plan, error) {
 	return nil, fmt.Errorf("%w: virtual media needs Redfish", ErrUnsupported)
 }
