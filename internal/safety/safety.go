@@ -158,8 +158,12 @@ func (t *Tokens) Redeem(op Op, token string) error {
 		return errors.New("confirm_token already used; request a new plan")
 	}
 	t.used[token] = time.Unix(exp, 0)
+	// Forget a used token only once it can no longer pass the expiry check
+	// above (which works in whole seconds). Evicting at the sub-second
+	// instant after exp would reopen a replay window until exp+1s.
+	now := t.now().Unix()
 	for k, e := range t.used {
-		if t.now().After(e) {
+		if now > e.Unix() {
 			delete(t.used, k)
 		}
 	}

@@ -192,3 +192,34 @@ func TestTokenTamperAndForgery(t *testing.T) {
 		}
 	}
 }
+
+// A used token must stay burned for as long as it could still pass the
+// expiry check (whole seconds), even if another redeem prunes the used-set
+// a fraction of a second after the token's expiry.
+func TestTokenNoReplayAfterSubSecondPrune(t *testing.T) {
+	tk := NewTokens(time.Minute)
+	base := time.Unix(1_800_000_000, 0)
+	now := base
+	tk.now = func() time.Time { return now }
+	op := Op{Target: "db-01", Class: "power", Action: "force-off"}
+	tok, exp := tk.Issue(op)
+	if err := tk.Redeem(op, tok); err != nil {
+		t.Fatal(err)
+	}
+	// 100ms past expiry, still inside the expiry second: an unrelated redeem
+	// runs the pruning loop.
+	now = exp.Add(100 * time.Millisecond)
+	other, _ := tk.Issue(op)
+	if err := tk.Redeem(op, other); err != nil {
+		t.Fatal(err)
+	}
+	now = exp.Add(300 * time.Millisecond)
+	if err := tk.Redeem(op, tok); err == nil {
+		t.Fatal("used token replayed after a sub-second prune")
+	}
+	// After the expiry second the token is rejected as expired.
+	now = exp.Add(1100 * time.Millisecond)
+	if err := tk.Redeem(op, tok); err == nil || !strings.Contains(err.Error(), "expired") {
+		t.Fatalf("after expiry: %v", err)
+	}
+}
