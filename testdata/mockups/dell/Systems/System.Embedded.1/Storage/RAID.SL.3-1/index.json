@@ -1,0 +1,48 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1",
+  "@odata.type": "#Storage.v1_13_0.Storage",
+  "Drives": [
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.0"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.1"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.2"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.3"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.4"
+    }
+  ],
+  "Drives@odata.count": 5,
+  "Id": "RAID.SL.3-1",
+  "Name": "PERC H755 Front",
+  "Status": {
+    "Health": "OK",
+    "HealthRollup": "Critical",
+    "State": "Enabled"
+  },
+  "StorageControllers": [
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1#/StorageControllers/0",
+      "FirmwareVersion": "52.21.0-4606",
+      "Manufacturer": "DELL",
+      "MemberId": "0",
+      "Model": "PERC H755 Front",
+      "Name": "PERC H755 Front",
+      "SpeedGbps": 12,
+      "Status": {
+        "Health": "OK",
+        "HealthRollup": "Critical",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Volumes": {
+    "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Volumes"
+  }
+}

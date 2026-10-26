@@ -1,0 +1,22 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/0",
+  "@odata.type": "#Drive.v1_17_0.Drive",
+  "CapacityBytes": 1600000000000,
+  "FailurePredicted": false,
+  "Id": "0",
+  "MediaType": "SSD",
+  "Model": "MO001600JWTBT",
+  "Name": "Drive 0",
+  "PhysicalLocation": {
+    "PartLocation": {
+      "ServiceLabel": "Slot=12:Port=1I:Box=1:Bay=1"
+    }
+  },
+  "PredictedMediaLifeLeftPercent": 6,
+  "Protocol": "SAS",
+  "SerialNumber": "S5H0NA0R301442",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

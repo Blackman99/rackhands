@@ -83,7 +83,7 @@
         "LicensingRollupStatus": "OK",
         "PSRollupStatus": "Critical",
         "SELRollupStatus": "Critical",
-        "StorageRollupStatus": "OK",
+        "StorageRollupStatus": "Critical",
         "TempRollupStatus": "OK",
         "VoltRollupStatus": "OK"
       }
@@ -108,5 +108,8 @@
     "Health": "Critical",
     "HealthRollup": "Critical",
     "State": "Enabled"
+  },
+  "Storage": {
+    "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage"
   }
 }

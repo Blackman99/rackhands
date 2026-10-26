@@ -1,0 +1,21 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/2",
+  "@odata.type": "#Drive.v1_17_0.Drive",
+  "CapacityBytes": 4000000000000,
+  "FailurePredicted": true,
+  "Id": "2",
+  "MediaType": "HDD",
+  "Model": "MB004000JWJTT",
+  "Name": "Drive 2",
+  "PhysicalLocation": {
+    "PartLocation": {
+      "ServiceLabel": "Slot=12:Port=1I:Box=1:Bay=3"
+    }
+  },
+  "Protocol": "SAS",
+  "SerialNumber": "ZC1A7K2Q",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

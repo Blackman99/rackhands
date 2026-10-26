@@ -1,0 +1,31 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Volumes/Disk.Virtual.0",
+  "@odata.type": "#Volume.v1_9_0.Volume",
+  "CapacityBytes": 960000000000,
+  "Encrypted": false,
+  "Id": "Disk.Virtual.0:RAID.SL.3-1",
+  "Links": {
+    "Drives": [
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.0"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.1"
+      }
+    ]
+  },
+  "Name": "os",
+  "Oem": {
+    "Dell": {
+      "DellVolume": {
+        "RaidStatus": "Online"
+      }
+    }
+  },
+  "RAIDType": "RAID1",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "VolumeType": "Mirrored"
+}

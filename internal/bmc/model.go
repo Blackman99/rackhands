@@ -99,7 +99,10 @@ type HealthReport struct {
 	Vendor   string    `json:"vendor"`
 	Overall  string    `json:"overall"`
 	Problems []Problem `json:"problems"`
-	Notes    []string  `json:"notes,omitempty"`
+	// Storage is the storage section (controllers, drives, volumes); nil
+	// when it could not be read (IPMI has none).
+	Storage *StorageReport `json:"storage,omitempty"`
+	Notes   []string       `json:"notes,omitempty"`
 }
 
 // Sensor is one reading.
@@ -187,6 +190,8 @@ type Backend interface {
 	PowerState(ctx context.Context) (string, error)
 	Firmware(ctx context.Context) ([]Firmware, error)
 	Boot(ctx context.Context) (*Boot, error)
+	// Storage reads controllers, drives and volumes (read-only, no class needed).
+	Storage(ctx context.Context) (*StorageReport, error)
 
 	PlanPower(ctx context.Context, action string) (*Plan, error)
 	PlanBMCReset(ctx context.Context) (*Plan, error)

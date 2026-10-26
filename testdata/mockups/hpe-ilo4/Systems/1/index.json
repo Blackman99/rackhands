@@ -1,0 +1,53 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1",
+  "@odata.type": "#ComputerSystem.1.0.1.ComputerSystem",
+  "BiosVersion": "P89 v2.80 (10/16/2020)",
+  "HostName": "cache-03",
+  "Id": "1",
+  "Links": {
+    "Chassis": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "Manufacturer": "HP",
+  "MemorySummary": {
+    "Status": {
+      "Health": "OK",
+      "State": "Enabled"
+    },
+    "TotalSystemMemoryGiB": 128
+  },
+  "Model": "ProLiant DL360 Gen9",
+  "Name": "Computer System",
+  "Oem": {
+    "Hp": {
+      "Links": {
+        "SmartStorage": {
+          "@odata.id": "/redfish/v1/Systems/1/SmartStorage"
+        }
+      }
+    }
+  },
+  "PowerState": "On",
+  "ProcessorSummary": {
+    "Count": 2,
+    "Model": "Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz",
+    "Status": {
+      "Health": "OK",
+      "State": "Enabled"
+    }
+  },
+  "SKU": "755258-B21",
+  "SerialNumber": "CZJ5430ABC",
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  }
+}

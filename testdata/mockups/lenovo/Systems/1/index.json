@@ -83,5 +83,8 @@
     "Health": "OK",
     "HealthRollup": "OK",
     "State": "Enabled"
+  },
+  "Storage": {
+    "@odata.id": "/redfish/v1/Systems/1/Storage"
   }
 }

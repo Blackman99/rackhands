@@ -1,0 +1,14 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Volumes",
+  "@odata.type": "#VolumeCollection.VolumeCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Volumes/Disk.Virtual.0"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Volumes/Disk.Virtual.1"
+    }
+  ],
+  "Members@odata.count": 2,
+  "Name": "Volume Collection"
+}

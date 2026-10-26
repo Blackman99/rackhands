@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Controllers",
+  "@odata.type": "#StorageControllerCollection.StorageControllerCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Controllers/0"
+    }
+  ],
+  "Members@odata.count": 1,
+  "Name": "Storage Controllers"
+}

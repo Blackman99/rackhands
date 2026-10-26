@@ -1,0 +1,27 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0",
+  "@odata.type": "#HpSmartStorageArrayController.1.1.0.HpSmartStorageArrayController",
+  "FirmwareVersion": {
+    "Current": {
+      "VersionString": "7.00"
+    }
+  },
+  "Id": "0",
+  "Links": {
+    "LogicalDrives": {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/LogicalDrives"
+    },
+    "PhysicalDrives": {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives"
+    }
+  },
+  "Location": "Slot 0",
+  "LocationFormat": "PCISlot",
+  "Model": "Smart Array P440ar Controller",
+  "Name": "HpSmartStorageArrayController",
+  "SerialNumber": "PDNLH0BRH8A1PA",
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  }
+}

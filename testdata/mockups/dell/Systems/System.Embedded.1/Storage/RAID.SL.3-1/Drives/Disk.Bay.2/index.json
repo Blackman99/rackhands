@@ -1,0 +1,29 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.2",
+  "@odata.type": "#Drive.v1_17_0.Drive",
+  "CapacityBytes": 2400000000000,
+  "FailurePredicted": false,
+  "Id": "Disk.Bay.2:Enclosure.Internal.0-1:RAID.SL.3-1",
+  "MediaType": "HDD",
+  "Model": "ST2400MM0129",
+  "Name": "Physical Disk 0:1:2",
+  "Oem": {
+    "Dell": {
+      "DellPhysicalDisk": {
+        "RaidStatus": "Failed"
+      }
+    }
+  },
+  "PhysicalLocation": {
+    "PartLocation": {
+      "LocationOrdinalValue": 2,
+      "LocationType": "Bay"
+    }
+  },
+  "Protocol": "SAS",
+  "SerialNumber": "WBN0K2L7",
+  "Status": {
+    "Health": "Critical",
+    "State": "Enabled"
+  }
+}

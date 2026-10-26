@@ -133,9 +133,13 @@ func New(a *app.App, version string) *mcp.Server {
 		fleet(a, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
 			return bmc.InventoryWithAccount(ctx, c)
 		}))
-	mcp.AddTool(s, &mcp.Tool{Name: "get_health", Description: "Overall health (OK/Warning/Critical) and every component that is not OK, using vendor rollups (iDRAC, iLO) where available.", Annotations: ro("Server health")},
+	mcp.AddTool(s, &mcp.Tool{Name: "get_health", Description: "Overall health (OK/Warning/Critical) and every component that is not OK, using vendor rollups (iDRAC, iLO) where available. Includes a storage section (controllers, drives, RAID volumes) over Redfish; failed or worn drives and degraded volumes count as problems.", Annotations: ro("Server health")},
 		fleet(a, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
 			return bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.HealthReport, error) { return b.Health(ctx) })
+		}))
+	mcp.AddTool(s, &mcp.Tool{Name: "get_storage", Description: "Storage on one or many servers: RAID controllers (model, firmware), drives (media, size, health, media life left, predicted failure, rebuild progress) and volumes (RAID level, size, degraded or rebuilding). Read-only: needs no dangerous class. Redfish only; IPMI targets return an error saying storage needs Redfish. source tells where it came from (Storage, HPE SmartStorage on iLO 4, or SimpleStorage).", Annotations: ro("Storage health")},
+		fleet(a, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
+			return bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.StorageReport, error) { return b.Storage(ctx) })
 		}))
 	mcp.AddTool(s, &mcp.Tool{Name: "get_power_state", Description: "Power state (On/Off) of one or many servers.", Annotations: ro("Power state")},
 		fleet(a, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {

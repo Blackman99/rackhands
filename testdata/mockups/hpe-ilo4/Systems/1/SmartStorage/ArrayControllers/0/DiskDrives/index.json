@@ -1,0 +1,23 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives",
+  "@odata.type": "#HpSmartStorageDiskDriveCollection.1.0.0.HpSmartStorageDiskDriveCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/0"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/1"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/2"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/3"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/4"
+    }
+  ],
+  "Members@odata.count": 5,
+  "Name": "HpSmartStorageDiskDrives"
+}

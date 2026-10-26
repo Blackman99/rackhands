@@ -211,6 +211,56 @@ def std_vm_actions(p):
                         "#VirtualMedia.EjectMedia": {"target": V1 + p + "/Actions/VirtualMedia.EjectMedia"}}}
 
 
+TB, GB = 1000 ** 4, 1000 ** 3
+
+
+def storage(m, sys_path, subsystems):
+    """DMTF Storage under sys_path/Storage. Each subsystem is a dict:
+    id, name, status, controllers [dict], inline (True: StorageControllers array,
+    the shape iDRAC and Supermicro serve; False: a Controllers collection, like
+    XCC2 and iLO 5), drives [(absolute path, body)] (some BMCs keep drives under
+    /Chassis), volumes [(id, body)] (key absent: no Volumes link at all)."""
+    members = []
+    for sub in subsystems:
+        sp = sys_path + "/Storage/" + sub["id"]
+        drives = sub.get("drives", [])
+        o = {"Id": sub["id"], "Name": sub["name"], "Status": sub.get("status", status()),
+             "Drives": [ref(d) for d, _ in drives], "Drives@odata.count": len(drives)}
+        if sub.get("inline", True):
+            o["StorageControllers"] = [dict(c, **{"@odata.id": V1 + sp + "#/StorageControllers/%d" % i, "MemberId": str(i)})
+                                       for i, c in enumerate(sub.get("controllers", []))]
+        else:
+            cids = []
+            for i, c in enumerate(sub.get("controllers", [])):
+                cid = c.get("Id", str(i))
+                m.put(sp + "/Controllers/" + cid, dict(c, Id=cid), "#StorageController.v1_7_0.StorageController")
+                cids.append(sp + "/Controllers/" + cid)
+            m.coll(sp + "/Controllers", cids, "Storage Controllers", "#StorageControllerCollection.StorageControllerCollection")
+            o["Controllers"] = ref(sp + "/Controllers")
+        for dp, body in drives:
+            m.put(dp, body, "#Drive.v1_17_0.Drive")
+        if "volumes" in sub:
+            vols = []
+            for vid, body in sub["volumes"]:
+                m.put(sp + "/Volumes/" + vid, dict(body, Id=body.get("Id", vid)), "#Volume.v1_9_0.Volume")
+                vols.append(sp + "/Volumes/" + vid)
+            m.coll(sp + "/Volumes", vols, "Volume Collection", "#VolumeCollection.VolumeCollection")
+            o["Volumes"] = ref(sp + "/Volumes")
+        o.update(sub.get("extra", {}))
+        m.put(sp, o, "#Storage.v1_13_0.Storage")
+        members.append(sp)
+    m.coll(sys_path + "/Storage", members, "Storage Collection", "#StorageCollection.StorageCollection")
+
+
+def drive(did, name, model, media, cap, serial, h="OK", life=None, predicted=False, proto="SAS", state="Enabled", extra=None):
+    d = {"Id": did, "Name": name, "Model": model, "MediaType": media, "CapacityBytes": cap, "Protocol": proto,
+         "SerialNumber": serial, "FailurePredicted": predicted, "Status": status(h, state)}
+    if life is not None:
+        d["PredictedMediaLifeLeftPercent"] = life
+    d.update(extra or {})
+    return d
+
+
 # ---------------------------------------------------------------- Dell iDRAC 9
 def dell():
     m = Mock("dell")
@@ -230,14 +280,46 @@ def dell():
                        "BootSourceOverrideTarget@Redfish.AllowableValues": BOOT_TARGETS + ["SDCard", "UefiShell"]},
               "Actions": reset_action(S, ["On", "ForceOff", "ForceRestart", "GracefulRestart", "GracefulShutdown", "PushPowerButton", "Nmi", "PowerCycle"]),
               "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]},
-              "Processors": ref(S + "/Processors"), "Memory": ref(S + "/Memory"),
+              "Processors": ref(S + "/Processors"), "Memory": ref(S + "/Memory"), "Storage": ref(S + "/Storage"),
               "Oem": {"Dell": {"DellSystem": {"@odata.type": "#DellSystem.v1_4_0.DellSystem", "PSRollupStatus": "Critical", "FanRollupStatus": "OK",
-                                              "TempRollupStatus": "OK", "VoltRollupStatus": "OK", "CPURollupStatus": "OK", "StorageRollupStatus": "OK",
+                                              "TempRollupStatus": "OK", "VoltRollupStatus": "OK", "CPURollupStatus": "OK", "StorageRollupStatus": "Critical",
                                               "BatteryRollupStatus": "OK", "IntrusionRollupStatus": "OK", "SELRollupStatus": "Critical",
                                               "CurrentRollupStatus": "OK", "LicensingRollupStatus": "OK"}}}},
           "#ComputerSystem.v1_20_0.ComputerSystem")
     m.coll(S + "/Processors", [], "Processors")
     m.coll(S + "/Memory", [], "Memory")
+    # iDRAC 9: Storage members are FQDDs (RAID.SL.3-1 = PERC in slot 3, AHCI.Embedded.2-1 = chipset SATA with nothing
+    # behind it). Controllers come inline (StorageControllers). Drive Ids are Disk.Bay.N:Enclosure.Internal.0-1:RAID.SL.3-1;
+    # the colons are dropped from the mockup *paths* only, so the repository still checks out on Windows.
+    # Oem.Dell.DellPhysicalDisk.RaidStatus / DellVolume.RaidStatus carry the controller's own word (Failed, Degraded).
+    R = "RAID.SL.3-1"
+    def dd(bay, media, cap, model, serial, h="OK", life=None, raid="Online", **kw):
+        did = "Disk.Bay.%d:Enclosure.Internal.0-1:%s" % (bay, R)
+        return (S + "/Storage/%s/Drives/Disk.Bay.%d" % (R, bay),
+                drive(did, "Physical Disk 0:1:%d" % bay, model, media, cap, serial, h, life,
+                      extra={"Oem": {"Dell": {"DellPhysicalDisk": {"RaidStatus": raid}}},
+                             "PhysicalLocation": {"PartLocation": {"LocationOrdinalValue": bay, "LocationType": "Bay"}}}, **kw))
+    drives = [dd(0, "SSD", 960 * GB, "MZ7L3960HCJR0D3", "S6KMNA0T401177", life=97),
+              dd(1, "SSD", 960 * GB, "MZ7L3960HCJR0D3", "S6KMNA0T401192", life=96),
+              dd(2, "HDD", 2400 * GB, "ST2400MM0129", "WBN0K2L7", h="Critical", raid="Failed"),
+              dd(3, "HDD", 2400 * GB, "ST2400MM0129", "WBN0K3A1"),
+              dd(4, "HDD", 2400 * GB, "ST2400MM0129", "WBN0K3C9")]
+    def dv(n, name, raid, vtype, cap, bays, h="OK", rs="Online"):
+        return ("Disk.Virtual.%d" % n, {"Id": "Disk.Virtual.%d:%s" % (n, R), "Name": name, "RAIDType": raid, "VolumeType": vtype,
+                "CapacityBytes": cap, "Status": status(h), "Encrypted": False,
+                "Links": {"Drives": [ref(drives[b][0]) for b in bays]},
+                "Oem": {"Dell": {"DellVolume": {"RaidStatus": rs}}}})
+    storage(m, S, [
+        {"id": R, "name": "PERC H755 Front", "status": status("OK", rollup="Critical"),
+         "controllers": [{"Name": "PERC H755 Front", "Model": "PERC H755 Front", "FirmwareVersion": "52.21.0-4606",
+                          "Manufacturer": "DELL", "Status": status("OK", rollup="Critical"), "SpeedGbps": 12}],
+         "drives": drives,
+         "volumes": [dv(0, "os", "RAID1", "Mirrored", 960 * GB, [0, 1]),
+                     dv(1, "pgdata", "RAID5", "StripedWithParity", 4800 * GB, [2, 3, 4], "Warning", "Degraded")]},
+        {"id": "AHCI.Embedded.2-1", "name": "C620 Series Chipset SATA Controller", "status": status(),
+         "controllers": [{"Name": "C620 Series Chipset SATA Controller", "FirmwareVersion": "", "Status": status()}],
+         "volumes": []},
+    ])
     opts = {"Boot0003": "Integrated RAID Controller 1: ubuntu", "Boot0004": "PXE Device 1: Embedded NIC 1 Port 1 Partition 1", "Boot0001": "Embedded SATA Port Optical Drive"}
     for k, v in opts.items():
         m.put(S + "/BootOptions/" + k, {"Id": k, "BootOptionReference": k, "DisplayName": v, "Name": "Boot Option"}, "#BootOption.v1_0_4.BootOption")
@@ -334,13 +416,34 @@ def hpe():
                        "BootSourceOverrideTarget@Redfish.AllowableValues": BOOT_TARGETS + ["UefiShell"]},
               "Actions": reset_action(S, ["On", "ForceOff", "GracefulShutdown", "ForceRestart", "Nmi", "PushPowerButton", "GracefulRestart"]),
               "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]},
-              "LogServices": ref(S + "/LogServices"),
-              "Oem": {"Hpe": {"AggregateHealthStatus": {
+              "LogServices": ref(S + "/LogServices"), "Storage": ref(S + "/Storage"),
+              "Oem": {"Hpe": {"Links": {"SmartStorage": ref(S + "/SmartStorage")}, "AggregateHealthStatus": {
                   "BiosOrHardwareHealth": {"Status": {"Health": "OK"}}, "FanRedundancy": "Redundant",
                   "Fans": {"Status": {"Health": "Warning"}}, "Memory": {"Status": {"Health": "OK"}}, "Network": {"Status": {"Health": "OK"}},
                   "PowerSupplies": {"Status": {"Health": "OK"}}, "PowerSupplyRedundancy": "Redundant", "Processors": {"Status": {"Health": "OK"}},
-                  "SmartStorageBattery": {"Status": {"Health": "OK"}}, "Storage": {"Status": {"Health": "OK"}}, "Temperatures": {"Status": {"Health": "OK"}}}}}},
+                  "SmartStorageBattery": {"Status": {"Health": "OK"}}, "Storage": {"Status": {"Health": "Warning"}}, "Temperatures": {"Status": {"Health": "OK"}}}}}},
           "#ComputerSystem.v1_17_0.ComputerSystem")
+    # iLO 5 (2.x+) with an MR controller: DMTF Storage, controllers as a collection, numeric drive ids.
+    # SmartStorage (the iLO OEM tree for Smart Array) is still linked but empty on MR controllers.
+    D = "DE00A000"
+    hd = [(S + "/Storage/%s/Drives/%d" % (D, i), drive(str(i), "Drive %d" % i, model, media, cap, sn, life=life, predicted=pred,
+           extra={"PhysicalLocation": {"PartLocation": {"ServiceLabel": "Slot=12:Port=1I:Box=1:Bay=%d" % (i + 1)}}}))
+          for i, (model, media, cap, sn, life, pred) in enumerate([
+              ("MO001600JWTBT", "SSD", 1600 * GB, "S5H0NA0R301442", 6, False),
+              ("MO001600JWTBT", "SSD", 1600 * GB, "S5H0NA0R301459", 71, False),
+              ("MB004000JWJTT", "HDD", 4 * TB, "ZC1A7K2Q", None, True),
+              ("MB004000JWJTT", "HDD", 4 * TB, "ZC1A7K9M", None, False)])]
+    storage(m, S, [{"id": D, "name": "HPE MR416i-a Gen10+", "inline": False, "status": status("OK", rollup="Warning"),
+                    "controllers": [{"Id": "0", "Name": "HPE MR416i-a Gen10+", "Model": "HPE MR416i-a Gen10+",
+                                     "FirmwareVersion": "52.24.3-4948", "Status": status(), "SerialNumber": "SKC4012345"}],
+                    "drives": hd,
+                    "volumes": [("239", {"Name": "Logical Drive 1", "RAIDType": "RAID1", "CapacityBytes": 1600 * GB, "Status": status(),
+                                         "Links": {"Drives": [ref(hd[0][0]), ref(hd[1][0])]}}),
+                                ("240", {"Name": "Logical Drive 2", "RAIDType": "RAID10", "CapacityBytes": 4 * TB, "Status": status(),
+                                         "Links": {"Drives": [ref(hd[2][0]), ref(hd[3][0])]}})]}])
+    m.put(S + "/SmartStorage", {"Id": "SmartStorage", "Name": "HpeSmartStorage", "Status": status(),
+                                "Links": {"ArrayControllers": ref(S + "/SmartStorage/ArrayControllers")}}, "#HpeSmartStorage.v2_0_0.HpeSmartStorage")
+    m.coll(S + "/SmartStorage/ArrayControllers", [], "HpeSmartStorageArrayControllers", "#HpeSmartStorageArrayControllerCollection.HpeSmartStorageArrayControllerCollection")
     opts = {"Boot000A": "HPE MR416i-a Gen10+ - Ubuntu", "Boot0009": "Embedded LOM 1 Port 1 : HPE Ethernet 1Gb 4-port 369i Adapter - NIC (PXE IPv4)", "Boot0012": "Generic USB Boot"}
     for k, v in opts.items():
         m.put(S + "/BootOptions/" + k, {"Id": k, "BootOptionReference": k, "DisplayName": v, "Name": "Boot Option"}, "#BootOption.v1_0_1.BootOption")
@@ -419,8 +522,20 @@ def lenovo():
                        "BootSourceOverrideEnabled": "Disabled", "BootSourceOverrideTarget": "None", "BootSourceOverrideMode": "UEFI",
                        "BootSourceOverrideTarget@Redfish.AllowableValues": ["None", "Pxe", "Cd", "Usb", "Hdd", "BiosSetup", "Diags", "UefiTarget"]},
               "Actions": reset_action(S, ["On", "Nmi", "GracefulShutdown", "GracefulRestart", "ForceOn", "ForceOff", "ForceRestart"]),
-              "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]}, "LogServices": ref(S + "/LogServices")},
+              "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]}, "LogServices": ref(S + "/LogServices"),
+              "Storage": ref(S + "/Storage")},
           "#ComputerSystem.v1_16_0.ComputerSystem")
+    # XCC2: Storage per adapter slot (RAID_Slot3), Controllers collection, Disk.N drive ids, healthy and worn-in SSDs.
+    L = "RAID_Slot3"
+    ld = [(S + "/Storage/%s/Drives/Disk.%d" % (L, i), drive("Disk.%d" % i, "Drive %d" % i, "SSDSC2KG480G8L", "SSD", 480 * GB,
+           sn, life=life, proto="SATA", extra={"PhysicalLocation": {"PartLocation": {"LocationOrdinalValue": i, "ServiceLabel": "Drive %d" % i}}}))
+          for i, (sn, life) in enumerate([("PHYG1234016P480BGN", 88), ("PHYG1234022Q480BGN", 91)])]
+    storage(m, S, [{"id": L, "name": "ThinkSystem RAID 940-8i 4GB Flash PCIe Gen4 12Gb Adapter", "inline": False, "status": status(rollup="OK"),
+                    "controllers": [{"Id": "0", "Name": "RAID 940-8i", "Model": "ThinkSystem RAID 940-8i 4GB Flash PCIe Gen4 12Gb Adapter",
+                                     "FirmwareVersion": "52.20.0-4523", "Status": status(rollup="OK")}],
+                    "drives": ld,
+                    "volumes": [("Volume0", {"Name": "boot", "RAIDType": "RAID1", "VolumeType": "Mirrored", "CapacityBytes": 479 * GB,
+                                             "Status": status(), "Links": {"Drives": [ref(d[0]) for d in ld]}})]}])
     opts = {"Boot0001": "ubuntu (M.2 Bay 0)", "Boot0002": "Network 1: PXE IPv4"}
     for k, v in opts.items():
         m.put(S + "/BootOptions/" + k, {"Id": k, "BootOptionReference": k, "DisplayName": v, "Name": "Boot Option"}, "#BootOption.v1_0_3.BootOption")
@@ -496,8 +611,21 @@ def supermicro():
               "Boot": {"BootSourceOverrideEnabled": "Disabled", "BootSourceOverrideTarget": "None", "BootSourceOverrideMode": "Legacy",
                        "BootSourceOverrideTarget@Redfish.AllowableValues": ["None", "Pxe", "Hdd", "Cd", "BiosSetup", "Usb"]},
               "Actions": reset_action(S, ["On", "ForceOff", "GracefulShutdown", "GracefulRestart", "ForceRestart", "Nmi", "ForceOn"]),
-              "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]}},
+              "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]}, "Storage": ref(S + "/Storage")},
           "#ComputerSystem.v1_5_1.ComputerSystem")
+    # X11 (storage needs the SFT-DCMS-SINGLE licence on real boards): HA-RAID with inline controllers, drives under
+    # /Chassis/1/Drives, volumes with only the old VolumeType (no RAIDType) and a rebuild in progress.
+    sd = [("/Chassis/1/Drives/HA-RAID.0.Disk.%d" % i, drive("HA-RAID.0.Disk.%d" % i, "Disk.%d" % i, "HUS726T4TALA6L4", "HDD", 4 * TB, sn,
+           proto="SATA", extra=extra))
+          for i, (sn, extra) in enumerate([("V6G1A2BK", {}), ("V6G1A3CK", {}), ("V6G1A4DK", {}),
+                                           ("V6G1B9XK", {"Operations": [{"OperationName": "Rebuild", "PercentageComplete": 37}]})])]
+    storage(m, S, [{"id": "HA-RAID", "name": "HA-RAID", "status": status("Warning"),
+                    "controllers": [{"Name": "AVAGO 3108 MegaRAID", "Model": "AVAGO 3108 MegaRAID", "FirmwareVersion": "4.680.00-8527",
+                                     "Status": status()}],
+                    "drives": sd,
+                    "volumes": [("0", {"Name": "VD0", "VolumeType": "StripedWithParity", "CapacityBytes": 12 * TB, "Status": status("Warning"),
+                                       "Operations": [{"OperationName": "Rebuild", "PercentageComplete": 37}],
+                                       "Links": {"Drives": [ref(d[0]) for d in sd]}})]}])
     m.put(C, {"Id": "1", "Name": "Computer System Chassis", "ChassisType": "RackMount", "Status": status("Warning"),
               "Thermal": ref(C + "/Thermal"), "Power": ref(C + "/Power"), "Links": {"ComputerSystems": [ref(S)], "ManagedBy": [ref(M)]}}, "#Chassis.v1_5_1.Chassis")
     thermal(m, C + "/Thermal",
@@ -531,7 +659,65 @@ def supermicro():
     return m
 
 
+# --------------------------------------------------- HPE iLO 4 (Gen9), minimal
+def hpe_ilo4():
+    """Only what storage needs: iLO 4 has no DMTF Storage; Smart Array lives in the
+    OEM SmartStorage tree (Oem.Hp, HpSmartStorage* types, sizes in MiB, RAID level as
+    a bare string, SSD wear as *used* endurance)."""
+    m = Mock("hpe-ilo4")
+    S, C, M = "/Systems/1", "/Chassis/1", "/Managers/1"
+    common_root(m, "HPE", "ProLiant DL360 Gen9",
+                {"Hp": {"@odata.type": "#HpiLOServiceExt.1.0.0.HpiLOServiceExt",
+                        "Manager": [{"ManagerType": "iLO 4", "ManagerFirmwareVersion": "2.82", "HostName": "ilo-cache-03"}]}})
+    m.coll("/Systems", [S], "Computer Systems")
+    m.coll("/Chassis", [C], "Computer System Chassis")
+    m.coll("/Managers", [M], "Managers")
+    m.put(S, {"Id": "1", "Name": "Computer System", "Manufacturer": "HP", "Model": "ProLiant DL360 Gen9", "SKU": "755258-B21",
+              "SerialNumber": "CZJ5430ABC", "BiosVersion": "P89 v2.80 (10/16/2020)", "HostName": "cache-03", "PowerState": "On",
+              "Status": status("Warning"), "ProcessorSummary": {"Count": 2, "Model": "Intel(R) Xeon(R) CPU E5-2650 v4 @ 2.20GHz", "Status": status()},
+              "MemorySummary": {"TotalSystemMemoryGiB": 128, "Status": status()},
+              "Links": {"Chassis": [ref(C)], "ManagedBy": [ref(M)]},
+              "Oem": {"Hp": {"Links": {"SmartStorage": ref(S + "/SmartStorage")}}}}, "#ComputerSystem.1.0.1.ComputerSystem")
+    m.put(C, {"Id": "1", "Name": "Computer System Chassis", "ChassisType": "RackMount", "SerialNumber": "CZJ5430ABC", "Status": status("Warning"),
+              "Links": {"ComputerSystems": [ref(S)], "ManagedBy": [ref(M)]}}, "#Chassis.1.0.0.Chassis")
+    m.put(M, {"Id": "1", "Name": "Manager", "Model": "iLO 4", "FirmwareVersion": "iLO 4 v2.82", "Status": status()}, "#Manager.1.0.0.Manager")
+    A = S + "/SmartStorage/ArrayControllers/0"
+    m.put(S + "/SmartStorage", {"Id": "SmartStorage", "Name": "HpSmartStorage", "Status": status("Warning"),
+                                "Links": {"ArrayControllers": ref(S + "/SmartStorage/ArrayControllers")}}, "#HpSmartStorage.1.0.0.HpSmartStorage")
+    m.coll(S + "/SmartStorage/ArrayControllers", [A], "HpSmartStorageArrayControllers", "#HpSmartStorageArrayControllerCollection.1.0.0.HpSmartStorageArrayControllerCollection")
+    m.put(A, {"Id": "0", "Name": "HpSmartStorageArrayController", "Model": "Smart Array P440ar Controller", "SerialNumber": "PDNLH0BRH8A1PA",
+              "Location": "Slot 0", "LocationFormat": "PCISlot", "FirmwareVersion": {"Current": {"VersionString": "7.00"}},
+              "Status": status("Warning"), "Links": {"LogicalDrives": ref(A + "/LogicalDrives"), "PhysicalDrives": ref(A + "/DiskDrives")}},
+          "#HpSmartStorageArrayController.1.1.0.HpSmartStorageArrayController")
+    disks = [("0", "1I:1:1", "MK000480GWCEV", "SSD", 457862, "OK", ["OK"], 3),
+             ("1", "1I:1:2", "MK000480GWCEV", "SSD", 457862, "OK", ["OK"], 4),
+             ("2", "1I:1:3", "EG001200JWJNQ", "HDD", 1144641, "OK", ["OK"], None),
+             ("3", "1I:1:4", "EG001200JWJNQ", "HDD", 1144641, "Critical", ["Failed"], None),
+             ("4", "2I:1:5", "EG001200JWJNQ", "HDD", 1144641, "OK", ["OK"], None)]
+    for did, loc, model, media, mib, h, reasons, used in disks:
+        d = {"Id": did, "Name": "HpSmartStorageDiskDrive", "Location": loc, "LocationFormat": "ControllerPort:Box:Bay", "Model": model,
+             "MediaType": media, "InterfaceType": "SAS", "CapacityMiB": mib, "SerialNumber": "SN%s%s" % (model[-4:], did),
+             "FirmwareVersion": {"Current": {"VersionString": "HPD3"}}, "Status": status(h), "DiskDriveStatusReasons": reasons}
+        if used is not None:
+            d["SSDEnduranceUtilizationPercentage"] = used
+        m.put(A + "/DiskDrives/" + did, d, "#HpSmartStorageDiskDrive.1.1.0.HpSmartStorageDiskDrive")
+    m.coll(A + "/DiskDrives", [A + "/DiskDrives/" + d[0] for d in disks], "HpSmartStorageDiskDrives", "#HpSmartStorageDiskDriveCollection.1.0.0.HpSmartStorageDiskDriveCollection")
+    lds = [("1", "os", "1", 457830, "OK", ["OK"], ["0", "1"]), ("2", "cache", "5", 2289280, "Warning", ["InterimRecoveryMode"], ["2", "3", "4"])]
+    for lid, name, raid, mib, h, reasons, members in lds:
+        m.put(A + "/LogicalDrives/" + lid, {"Id": lid, "Name": "HpSmartStorageLogicalDrive", "LogicalDriveName": name, "LogicalDriveNumber": int(lid),
+                                            "Raid": raid, "CapacityMiB": mib, "Status": status(h), "LogicalDriveStatusReasons": reasons,
+                                            "Links": {"DataDrives": ref(A + "/LogicalDrives/" + lid + "/DataDrives")}},
+              "#HpSmartStorageLogicalDrive.1.1.0.HpSmartStorageLogicalDrive")
+        m.coll(A + "/LogicalDrives/" + lid + "/DataDrives", [A + "/DiskDrives/" + x for x in members], "HpSmartStorageDiskDrives")
+    m.coll(A + "/LogicalDrives", [A + "/LogicalDrives/" + l[0] for l in lds], "HpSmartStorageLogicalDrives", "#HpSmartStorageLogicalDriveCollection.1.0.0.HpSmartStorageLogicalDriveCollection")
+    accounts(m, [("1", "Administrator", None, {"Hp": {"LoginName": "", "Privileges": {"LoginPriv": True, "RemoteConsolePriv": True,
+             "VirtualMediaPriv": True, "VirtualPowerAndResetPriv": True, "iLOConfigPriv": True, "UserConfigPriv": True}}}),
+                 ("2", "admin", None, {"Hp": {"LoginName": "", "Privileges": {"LoginPriv": True, "RemoteConsolePriv": False,
+                  "VirtualMediaPriv": False, "VirtualPowerAndResetPriv": False, "iLOConfigPriv": False, "UserConfigPriv": False}}})])
+    return m
+
+
 if __name__ == "__main__":
-    for f in (dell, hpe, lenovo, supermicro):
+    for f in (dell, hpe, hpe_ilo4, lenovo, supermicro):
         f()
     print("mockups written to", HERE)

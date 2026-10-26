@@ -36,7 +36,8 @@ Redfish (Dell iDRAC, HPE iLO, Lenovo XCC, Supermicro, any DMTF BMC) with IPMI fa
 Read (always available):
   rackhands targets                         configured BMCs and what is enabled
   rackhands inventory [TARGET...]           model, serial, BIOS/BMC firmware, CPU, memory
-  rackhands health    [TARGET...]           rollup + every component that is not OK (exit 1 if any)
+  rackhands health    [TARGET...]           rollup + every component that is not OK, storage included (exit 1 if any)
+  rackhands storage   [TARGET...]           RAID controllers, drives (wear, predicted failure), volumes; --problems
   rackhands power     [TARGET...]           power state
   rackhands sensors   TARGET [--kind K] [--problems]
   rackhands events    TARGET [-n 30] [--min warning] [--all-logs]
@@ -377,6 +378,7 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 					}
 					fmt.Fprintf(stdout, "   %-9s %s%s\n", p.Health, p.Component, d)
 				}
+				fmt.Fprintf(stdout, "   %-9s %s\n", "storage", storageLine(h))
 			}
 		}
 		if failed {
@@ -386,6 +388,8 @@ func dispatch(ctx context.Context, o *opts, stdin io.Reader, stdout, stderr io.W
 			return &exitErr{code: 1}
 		}
 		return nil
+	case "storage", "disks", "raid":
+		return storageCmd(ctx, a, o, rest, stdout)
 	case "power":
 		if len(rest) >= 2 {
 			return dangerous(ctx, a, o, stdin, stdout, stderr, app.Danger{Target: rest[0], Class: "power", Action: rest[1]})
@@ -762,11 +766,11 @@ func printVendors(w io.Writer, js bool) error {
 		Vendor, BMC, EventLogs, Quirks string
 	}
 	q := map[string]string{
-		"Dell":       "hides Previous-/Available- firmware copies; DellSystem *RollupStatus subsystem health; SEL under iDRAC.Embedded.1; firmware jobs from the iDRAC job queue (Oem.Dell JobState wins over TaskState, Scheduled = staged for the next reboot)",
-		"HPE":        "iLO 4 (Oem.Hp) and iLO 5/6 (Oem.Hpe) AggregateHealthStatus; Manager.Reset sent without ResetType; IML severity Caution→Warning; OEM virtual media actions; iLO 5 SimpleUpdate has no Task, so the flash is followed on UpdateService Oem.Hpe.State",
-		"Lenovo":     "If-Match ETag on every PATCH (XCC rejects PATCH without it); PlatformLog as the hardware log; firmware tasks via a DSP0266 task monitor",
-		"Supermicro": "Log1 as SEL; X11 OEM-only virtual media reported as unsupported instead of failing mid-way",
-		"Generic":    "pure DMTF schema: Thermal/Power or Sensors, LogServices with LogEntryType=SEL, SimpleUpdate, InsertMedia, TaskService tasks and task monitors",
+		"Dell":       "hides Previous-/Available- firmware copies; DellSystem *RollupStatus subsystem health; SEL under iDRAC.Embedded.1; firmware jobs from the iDRAC job queue (Oem.Dell JobState wins over TaskState, Scheduled = staged for the next reboot); PERC storage under RAID.SL.*/RAID.Integrated.* with DellPhysicalDisk/DellVolume RaidStatus, empty AHCI/CPU subsystems skipped",
+		"HPE":        "iLO 4 (Oem.Hp) and iLO 5/6 (Oem.Hpe) AggregateHealthStatus; Manager.Reset sent without ResetType; IML severity Caution→Warning; OEM virtual media actions; iLO 5 SimpleUpdate has no Task, so the flash is followed on UpdateService Oem.Hpe.State; Smart Array read from the OEM SmartStorage tree (ArrayControllers, DiskDrives, LogicalDrives) when DMTF Storage is missing, as on iLO 4",
+		"Lenovo":     "If-Match ETag on every PATCH (XCC rejects PATCH without it); PlatformLog as the hardware log; firmware tasks via a DSP0266 task monitor; RAID controllers from the Storage Controllers collection",
+		"Supermicro": "Log1 as SEL; X11 OEM-only virtual media reported as unsupported instead of failing mid-way; drives linked from /Chassis, volumes with only VolumeType mapped to a RAID level, rebuild progress from Operations",
+		"Generic":    "pure DMTF schema: Thermal/Power or Sensors, LogServices with LogEntryType=SEL, SimpleUpdate, InsertMedia, TaskService tasks and task monitors; Storage, or SimpleStorage when that is all there is",
 	}
 	var rows []row
 	for _, v := range bmc.Profiles() {
@@ -780,5 +784,220 @@ func printVendors(w io.Writer, js bool) error {
 		fmt.Fprintf(w, "%-11s %-6s logs: %s\n            %s\n", r.Vendor, r.BMC, r.EventLogs, r.Quirks)
 	}
 	fmt.Fprintln(w, "\nAny vendor: falls back to IPMI 2.0 (power, sensors, SEL, FRU, BMC reset, boot device) when Redfish is down or missing.")
+	fmt.Fprintln(w, "Storage (controllers, drives, volumes) is Redfish-only: IPMI has no RAID or drive data, so rackhands says so instead of guessing.")
 	return nil
+}
+
+// storageLine is the one-line storage verdict under each health report.
+func storageLine(h *bmc.HealthReport) string {
+	if h.Storage != nil {
+		s := h.Storage.Summary()
+		if h.Storage.Source != "" && h.Storage.Source != "Storage" {
+			s += "  (" + h.Storage.Source + ")"
+		}
+		return s
+	}
+	for _, n := range h.Notes {
+		if strings.HasPrefix(n, "storage not") {
+			return strings.TrimPrefix(strings.TrimPrefix(n, "storage not read: "), "storage ")
+		}
+	}
+	return "not read"
+}
+
+func storageCmd(ctx context.Context, a *app.App, o *opts, rest []string, stdout io.Writer) error {
+	res, err := a.Fleet(ctx, rest, func(ctx context.Context, c *bmc.Conn) (any, bmc.Via, error) {
+		return bmc.Call(ctx, c, func(b bmc.Backend) (*bmc.StorageReport, error) { return b.Storage(ctx) })
+	})
+	if err != nil {
+		return err
+	}
+	bad, failed := false, false
+	for _, r := range res {
+		if r.Error != "" {
+			failed = true
+		} else if s := r.Data.(*bmc.StorageReport); s.Health != "" && s.Health != bmc.OK {
+			bad = true
+		}
+	}
+	if o.json {
+		if o.problems {
+			for _, r := range res {
+				if s, ok := r.Data.(*bmc.StorageReport); ok {
+					cp := *s
+					cp.Controllers, cp.Drives, cp.Volumes = nil, nil, nil
+					for _, c := range s.Controllers {
+						if notOK(c.Health) {
+							cp.Controllers = append(cp.Controllers, c)
+						}
+					}
+					for _, d := range s.Drives {
+						if notOK(d.Health) {
+							cp.Drives = append(cp.Drives, d)
+						}
+					}
+					for _, v := range s.Volumes {
+						if notOK(v.Health) {
+							cp.Volumes = append(cp.Volumes, v)
+						}
+					}
+					r.Data = &cp
+				}
+			}
+		}
+		if err := emit(stdout, res); err != nil {
+			return err
+		}
+	} else {
+		for i, r := range res {
+			if i > 0 {
+				fmt.Fprintln(stdout)
+			}
+			if r.Error != "" {
+				fmt.Fprintf(stdout, "%-9s %s  (via %s) %s\n", "ERROR", r.Target, dash(r.Via), r.Error)
+				continue
+			}
+			printStorage(stdout, r, r.Data.(*bmc.StorageReport), o.problems)
+		}
+	}
+	if failed {
+		return &exitErr{code: 2}
+	}
+	if bad {
+		return &exitErr{code: 1}
+	}
+	return nil
+}
+
+func notOK(h string) bool { return h != "" && h != bmc.OK }
+
+func printStorage(w io.Writer, r app.Result, s *bmc.StorageReport, problemsOnly bool) {
+	verdict := strings.ToUpper(s.Health)
+	if verdict == "" {
+		verdict = "-"
+	}
+	src := ""
+	if s.Source != "" {
+		src = ", " + s.Source
+	}
+	fmt.Fprintf(w, "%-9s %s  (%s, via %s%s)  %s\n", verdict, r.Target, s.Vendor, r.Via, src, s.Summary())
+	keep := func(h string) bool { return !problemsOnly || notOK(h) }
+	var rows int
+
+	var ctl [][]string
+	for _, c := range s.Controllers {
+		if keep(c.Health) {
+			model := c.Model
+			if strings.Contains(c.Name, model) {
+				model = ""
+			}
+			ctl = append(ctl, []string{c.Name, model, c.Firmware, c.Health})
+		}
+	}
+	rows += table(w, []string{"CONTROLLER", "MODEL", "FIRMWARE", "HEALTH"}, ctl)
+
+	var drv [][]string
+	for _, d := range s.Drives {
+		if keep(d.Health) {
+			life := ""
+			if d.LifeLeftPercent != nil {
+				life = fmt.Sprintf("%g%%", *d.LifeLeftPercent)
+			}
+			loc := d.Location
+			if strings.EqualFold(loc, d.Name) {
+				loc = ""
+			}
+			drv = append(drv, []string{d.Name, strings.TrimSpace(d.Protocol + " " + d.MediaType), bmc.HumanBytes(d.CapacityBytes),
+				d.Health, life, loc, driveNote(d)})
+		}
+	}
+	rows += table(w, []string{"DRIVE", "MEDIA", "SIZE", "HEALTH", "LIFE LEFT", "LOCATION", "NOTE"}, drv)
+
+	var vol [][]string
+	for _, v := range s.Volumes {
+		if keep(v.Health) {
+			n := ""
+			if v.Drives > 0 {
+				n = strconv.Itoa(v.Drives)
+			}
+			state := v.RAIDStatus
+			if state == "" {
+				state = v.State
+			}
+			if v.Operation != "" {
+				state = strings.TrimPrefix(state+", "+v.Operation, ", ")
+			}
+			vol = append(vol, []string{v.Name, v.RAIDType, bmc.HumanBytes(v.CapacityBytes), v.Health, n, state})
+		}
+	}
+	rows += table(w, []string{"VOLUME", "RAID", "SIZE", "HEALTH", "DRIVES", "STATE"}, vol)
+
+	if problemsOnly && rows == 0 && s.Source != "" {
+		fmt.Fprintln(w, "  nothing to report: every controller, drive and volume is OK")
+	}
+	for _, n := range s.Notes {
+		fmt.Fprintf(w, "  note: %s\n", n)
+	}
+}
+
+// table prints an indented section, leaving out columns (other than the
+// first) that are empty in every row, and returns the number of rows.
+func table(w io.Writer, head []string, rows [][]string) int {
+	if len(rows) == 0 {
+		return 0
+	}
+	used := make([]bool, len(head))
+	used[0] = true
+	for _, r := range rows {
+		for i, c := range r {
+			used[i] = used[i] || c != ""
+		}
+	}
+	var buf strings.Builder
+	tw := tabwriter.NewWriter(&buf, 0, 2, 2, ' ', 0)
+	line := func(cells []string, blank func(string) string) {
+		var out []string
+		for i, c := range cells {
+			if used[i] {
+				if i < len(cells)-1 {
+					c = blank(c)
+				}
+				out = append(out, c)
+			}
+		}
+		fmt.Fprintln(tw, "  "+strings.Join(out, "\t"))
+	}
+	line(head, func(c string) string { return c })
+	for _, r := range rows {
+		line(r, dash)
+	}
+	_ = tw.Flush()
+	for _, l := range strings.Split(strings.TrimRight(buf.String(), "\n"), "\n") {
+		fmt.Fprintln(w, strings.TrimRight(l, " "))
+	}
+	return len(rows)
+}
+
+// driveNote explains a drive's verdict in a few words, or stays empty.
+func driveNote(d bmc.Drive) string {
+	var n []string
+	if d.RAIDStatus != "" && d.RAIDStatus != "Online" && d.RAIDStatus != "OK" {
+		n = append(n, d.RAIDStatus)
+	}
+	if d.FailurePredicted != nil && *d.FailurePredicted {
+		n = append(n, "failure predicted")
+	}
+	if d.LifeLeftPercent != nil && *d.LifeLeftPercent < bmc.LowLifeLeftPercent {
+		n = append(n, "media nearly worn out")
+	}
+	if d.BMCHealth != "" && d.BMCHealth != d.Health {
+		n = append(n, "BMC says "+d.BMCHealth)
+	}
+	if d.Operation != "" {
+		n = append(n, d.Operation)
+	}
+	if d.State != "" && d.State != "Enabled" {
+		n = append(n, d.State)
+	}
+	return strings.Join(n, ", ")
 }

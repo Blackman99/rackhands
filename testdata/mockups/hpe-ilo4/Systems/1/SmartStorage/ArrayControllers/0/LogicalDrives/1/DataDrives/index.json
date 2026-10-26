@@ -1,0 +1,14 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/LogicalDrives/1/DataDrives",
+  "@odata.type": "#Collection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/0"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/1"
+    }
+  ],
+  "Members@odata.count": 2,
+  "Name": "HpSmartStorageDiskDrives"
+}

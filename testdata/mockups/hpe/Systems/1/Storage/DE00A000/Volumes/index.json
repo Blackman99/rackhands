@@ -1,0 +1,14 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Volumes",
+  "@odata.type": "#VolumeCollection.VolumeCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Volumes/239"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Volumes/240"
+    }
+  ],
+  "Members@odata.count": 2,
+  "Name": "Volume Collection"
+}

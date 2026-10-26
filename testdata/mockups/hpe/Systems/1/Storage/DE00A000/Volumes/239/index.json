@@ -1,0 +1,22 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Volumes/239",
+  "@odata.type": "#Volume.v1_9_0.Volume",
+  "CapacityBytes": 1600000000000,
+  "Id": "239",
+  "Links": {
+    "Drives": [
+      {
+        "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/0"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/1"
+      }
+    ]
+  },
+  "Name": "Logical Drive 1",
+  "RAIDType": "RAID1",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

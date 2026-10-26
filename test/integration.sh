@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End-to-end: the rackhands binary against
 #   * the DMTF Redfish-Mockup-Server serving the DMTF public-rackmount1 mockup
-#     and the Dell / HPE / Lenovo / Supermicro mockups in testdata/mockups
+#     and the Dell / HPE (iLO 5 and iLO 4) / Lenovo / Supermicro mockups in testdata/mockups
 #   * an OpenIPMI ipmi_sim BMC (IPMI 2.0 lanplus) with sensors, SEL and FRU
 # Needs: ./rackhands (built), python3, jq, ipmi_sim, RMS_DIR=<Redfish-Mockup-Server checkout>.
 set -euo pipefail
@@ -29,6 +29,7 @@ for m in dell hpe lenovo supermicro; do
   python3 "$RMS_DIR/redfishMockupServer.py" -S -D "testdata/mockups/$m" -p $port >"$WORK/rms-$m.log" 2>&1 & PIDS+=($!)
 done
 python3 "$RMS_DIR/redfishMockupServer.py" -S -D "$RMS_DIR/public-rackmount1" -p 8405 >"$WORK/rms-dmtf.log" 2>&1 & PIDS+=($!)
+python3 "$RMS_DIR/redfishMockupServer.py" -S -D "testdata/mockups/hpe-ilo4" -p 8406 >"$WORK/rms-hpe-ilo4.log" 2>&1 & PIDS+=($!)
 
 # --- IPMI simulator
 SIM="$WORK/ipmi"; mkdir -p "$SIM"
@@ -37,7 +38,7 @@ sed "s#@STATE@#$SIM#g" test/ipmi/sim.emu.in >"$SIM/sim.emu"
 export RACKHANDS_SIM_STATE="$SIM/power"
 (cd test/ipmi && exec ipmi_sim -c lan.conf -f "$SIM/sim.emu" -s "$SIM" -n) >"$SIM/log" 2>&1 & PIDS+=($!)
 
-for p in 8401 8402 8403 8404 8405; do
+for p in 8401 8402 8403 8404 8405 8406; do
   for _ in $(seq 50); do curl -sf "http://127.0.0.1:$p/redfish/v1/" >/dev/null && break; sleep 0.2; done
   curl -sf "http://127.0.0.1:$p/redfish/v1/" >/dev/null || fail "Redfish mockup server on :$p did not come up"
 done
@@ -56,6 +57,7 @@ targets:
   - {name: sim,    ipmi: "127.0.0.1:9623", allow: [power]}
   - {name: legacy, redfish: "http://127.0.0.1:1", ipmi: "127.0.0.1:9623", timeout: 5s}
   - {name: simro,  ipmi: "127.0.0.1:9623", username: reader}
+  - {name: ilo4,   redfish: "http://127.0.0.1:8406"}
 YAML
 export BMC_PASSWORD=secret
 R() { "$BIN" --config "$WORK/targets.yaml" "$@"; }
@@ -72,7 +74,7 @@ fi
 
 # --- reads, every vendor
 R --json inventory >"$WORK/inv.json" || fail "inventory over the whole fleet"
-expect "vendor detection" test "$(jq -r '[.[] | .data.vendor] | join(",")' "$WORK/inv.json")" = "Dell,HPE,Lenovo,Supermicro,Generic,Supermicro,Supermicro,Supermicro"
+expect "vendor detection" test "$(jq -r '[.[] | .data.vendor] | join(",")' "$WORK/inv.json")" = "Dell,HPE,Lenovo,Supermicro,Generic,Supermicro,Supermicro,Supermicro,HPE"
 expect "DMTF mockup inventory" test "$(jq -r '.[] | select(.target=="dmtf") | .data.serial' "$WORK/inv.json")" = "437XR1138R2"
 expect "IPMI FRU inventory" test "$(jq -r '.[] | select(.target=="sim") | .data.model' "$WORK/inv.json")" = "SYS-1029P-SIM"
 expect "IPMI fallback when Redfish is down" test "$(jq -r '.[] | select(.target=="legacy") | .via' "$WORK/inv.json")" = "ipmi (fallback)"
@@ -105,6 +107,29 @@ expect "Lenovo Sensors collection" sh -c "\"$BIN\" --config $WORK/targets.yaml s
 expect "IPMI sensors with M factor" sh -c "\"$BIN\" --config $WORK/targets.yaml sensors sim | grep -q '2400 RPM'"
 expect "Dell firmware hides Previous-/Available-" test "$(R --json firmware r750 | jq '.data | length')" -eq 5
 expect "boot order with display names" sh -c "\"$BIN\" --config $WORK/targets.yaml boot r750 | grep -q 'PXE Device 1'"
+
+# --- storage (read-only: no --allow, nothing audited, nothing written)
+audit_before=$( [ -f "$WORK/audit.jsonl" ] && wc -l <"$WORK/audit.jsonl" || echo 0 )
+set +e; R --json storage r750 dl380 sr650 x11 dmtf ilo4 >"$WORK/storage.json"; cs=$?; set -e
+expect "storage exits 1 when a drive or volume is not OK" test $cs -eq 1
+sj() { jq -r --arg t "$1" ".[] | select(.target==\$t) | .data | $2" "$WORK/storage.json"; }
+expect "Dell PERC failed drive (RAID.SL id, RaidStatus Failed)" test "$(sj r750 '.drives[] | select(.raid_status=="Failed") | .id')" = "Disk.Bay.2:Enclosure.Internal.0-1:RAID.SL.3-1"
+expect "Dell degraded RAID5 volume" test "$(sj r750 '.volumes[] | select(.name=="pgdata") | .health + " " + .raid_type + " " + .raid_status')" = "Warning RAID5 Degraded"
+expect "Dell empty AHCI subsystem skipped" test "$(sj r750 '.controllers | length')" -eq 1
+expect "HPE iLO 5 worn SSD and predicted failure are warnings" test "$(sj dl380 '[.drives[] | select(.health=="Warning")] | length')" -eq 2
+expect "HPE iLO 4 Smart Array from the OEM SmartStorage tree" test "$(sj ilo4 '.source + " " + .health + " " + (.volumes | map(.raid_type) | join(","))')" = "SmartStorage Critical RAID1,RAID5"
+expect "Lenovo XCC storage OK" test "$(sj sr650 '.health + " " + (.drives | length | tostring)')" = "OK 2"
+expect "Supermicro rebuild progress and VolumeType-only RAID level" test "$(sj x11 '.volumes[0] | .raid_type + " " + .operation')" = "RAID5/6 Rebuild 37%"
+expect "DMTF mockup falls back to SimpleStorage" test "$(sj dmtf '.source + " " + (.drives[] | select(.name=="SATA Bay 2") | .health)')" = "SimpleStorage Warning"
+R storage sr650 >/dev/null && ok "storage exits 0 for a healthy box"
+set +e; R storage sim >"$WORK/storage-ipmi.txt" 2>&1; c_si=$?; set -e
+expect "IPMI-only target: storage needs Redfish, exit 2, nothing invented" sh -c "test $c_si -eq 2 && grep -q 'needs Redfish' \"$WORK/storage-ipmi.txt\""
+expect "health carries storage problems" test "$(jq -r '.[] | select(.target=="r750") | [.data.problems[] | select(.component=="drive Physical Disk 0:1:2")] | length' "$WORK/health.json")" -eq 1
+expect "health on an IPMI target says storage was not checked" sh -c "jq -e '.[] | select(.target==\"sim\") | .data.notes | any(startswith(\"storage not checked\"))' \"$WORK/health.json\" >/dev/null"
+R storage --problems r750 >"$WORK/storage-problems.txt" || true
+expect "storage --problems hides healthy drives" sh -c "grep -q 'Physical Disk 0:1:2' \"$WORK/storage-problems.txt\" && ! grep -q 'Physical Disk 0:1:0' \"$WORK/storage-problems.txt\""
+audit_after=$( [ -f "$WORK/audit.jsonl" ] && wc -l <"$WORK/audit.jsonl" || echo 0 )
+expect "storage reads need no --allow and write nothing to the audit log" test "$audit_before" -eq "$audit_after"
 
 # --- dangerous operations
 set +e

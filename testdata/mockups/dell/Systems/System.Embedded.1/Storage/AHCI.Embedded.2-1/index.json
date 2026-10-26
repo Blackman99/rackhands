@@ -1,0 +1,27 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/AHCI.Embedded.2-1",
+  "@odata.type": "#Storage.v1_13_0.Storage",
+  "Drives": [],
+  "Drives@odata.count": 0,
+  "Id": "AHCI.Embedded.2-1",
+  "Name": "C620 Series Chipset SATA Controller",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "StorageControllers": [
+    {
+      "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/AHCI.Embedded.2-1#/StorageControllers/0",
+      "FirmwareVersion": "",
+      "MemberId": "0",
+      "Name": "C620 Series Chipset SATA Controller",
+      "Status": {
+        "Health": "OK",
+        "State": "Enabled"
+      }
+    }
+  ],
+  "Volumes": {
+    "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/AHCI.Embedded.2-1/Volumes"
+  }
+}

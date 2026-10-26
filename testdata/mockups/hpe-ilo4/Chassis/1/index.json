@@ -1,0 +1,24 @@
+{
+  "@odata.id": "/redfish/v1/Chassis/1",
+  "@odata.type": "#Chassis.1.0.0.Chassis",
+  "ChassisType": "RackMount",
+  "Id": "1",
+  "Links": {
+    "ComputerSystems": [
+      {
+        "@odata.id": "/redfish/v1/Systems/1"
+      }
+    ],
+    "ManagedBy": [
+      {
+        "@odata.id": "/redfish/v1/Managers/1"
+      }
+    ]
+  },
+  "Name": "Computer System Chassis",
+  "SerialNumber": "CZJ5430ABC",
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  }
+}

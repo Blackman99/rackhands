@@ -1,0 +1,15 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage",
+  "@odata.type": "#HpSmartStorage.1.0.0.HpSmartStorage",
+  "Id": "SmartStorage",
+  "Links": {
+    "ArrayControllers": {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers"
+    }
+  },
+  "Name": "HpSmartStorage",
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000",
+  "@odata.type": "#Storage.v1_13_0.Storage",
+  "Controllers": {
+    "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Controllers"
+  },
+  "Drives": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/0"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/1"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/2"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Drives/3"
+    }
+  ],
+  "Drives@odata.count": 4,
+  "Id": "DE00A000",
+  "Name": "HPE MR416i-a Gen10+",
+  "Status": {
+    "Health": "OK",
+    "HealthRollup": "Warning",
+    "State": "Enabled"
+  },
+  "Volumes": {
+    "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Volumes"
+  }
+}

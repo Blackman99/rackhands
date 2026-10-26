@@ -10,7 +10,7 @@
 ## v0.2
 - [x] TLS trust-on-first-use pinning for self-signed BMC certificates (`tls_fingerprint:`) instead of `insecure`
 - [x] Task monitoring for firmware updates (poll the returned Task / Dell job until it completes): `firmware-update --wait`, `rackhands task`, MCP `list_tasks` / `get_task`
-- Storage health (controllers, drives, volumes) in `health`
+- [x] Storage health (controllers, drives, volumes) in `health`: failed / predicted-failure / worn drives and degraded or rebuilding volumes, `rackhands storage`, MCP `get_storage`; DMTF Storage, HPE iLO 4 SmartStorage and SimpleStorage fallback
 - Homebrew tap and Scoop manifest
 
 ## v0.3

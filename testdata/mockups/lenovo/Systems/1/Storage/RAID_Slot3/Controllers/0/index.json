@@ -1,0 +1,13 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Controllers/0",
+  "@odata.type": "#StorageController.v1_7_0.StorageController",
+  "FirmwareVersion": "52.20.0-4523",
+  "Id": "0",
+  "Model": "ThinkSystem RAID 940-8i 4GB Flash PCIe Gen4 12Gb Adapter",
+  "Name": "RAID 940-8i",
+  "Status": {
+    "Health": "OK",
+    "HealthRollup": "OK",
+    "State": "Enabled"
+  }
+}
