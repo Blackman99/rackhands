@@ -1,0 +1,12 @@
+{
+  "@odata.id": "/redfish/v1/Managers/1",
+  "@odata.type": "#Manager.1.0.0.Manager",
+  "FirmwareVersion": "iLO 4 v2.82",
+  "Id": "1",
+  "Model": "iLO 4",
+  "Name": "Manager",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

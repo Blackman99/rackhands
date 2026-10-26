@@ -54,6 +54,17 @@ s = Session()
 names = {t["name"] for t in s.rpc("tools/list", {})["tools"]}
 check("get_health" in names and "power_action" not in names, "read-only by default: no dangerous tools listed")
 check({"list_tasks", "get_task"} <= names and "update_firmware" not in names, "task tools are read-only and listed without --allow")
+tools = {t["name"]: t for t in s.rpc("tools/list", {})["tools"]}
+check("get_storage" in tools and tools["get_storage"].get("annotations", {}).get("readOnlyHint") is True, "get_storage is listed read-only without --allow")
+err, out, _ = s.tool("get_storage", {"targets": ["r750", "dl380", "ilo4", "sim"]})
+st = {r["target"]: r for r in out["results"]}
+dell = st["r750"]["data"]
+check(not err and dell["health"] == "Critical" and any(d["raid_status"] == "Failed" for d in dell["drives"] if "raid_status" in d)
+      and any(v["name"] == "pgdata" and v["health"] == "Warning" for v in dell["volumes"]), "get_storage: Dell failed drive and degraded volume")
+hpe = st["dl380"]["data"]
+check(any(d.get("failure_predicted") for d in hpe["drives"]) and any(d.get("life_left_percent") == 6 for d in hpe["drives"]), "get_storage: iLO 5 predicted failure and worn SSD")
+check(st["ilo4"]["data"]["source"] == "SmartStorage", "get_storage: iLO 4 read from SmartStorage")
+check("needs Redfish" in st["sim"].get("error", ""), f"get_storage: IPMI says it needs Redfish {st['sim']}")
 err, out, _ = s.tool("list_tasks", {"target": "r750"})
 check(not err and [t["id"] for t in out["data"]["tasks"]][:1] == ["JID_003"], "list_tasks: Dell job queue, unfinished first")
 err, out, _ = s.tool("get_task", {"target": "r750", "task_id": "JID_002", "wait_seconds": 30})
@@ -61,6 +72,9 @@ check(not err and out["verdict"] == "failed" and "signature" in out["task"]["mes
 err, out, _ = s.tool("get_health", {"targets": ["all"]})
 overall = {r["target"]: (r.get("data") or {}).get("overall") for r in out["results"]}
 check(overall.get("r750") == "Critical" and overall.get("sr650") == "OK", f"fleet health over MCP {overall}")
+h = {r["target"]: r.get("data") or {} for r in out["results"]}
+check((h["sr650"].get("storage") or {}).get("health") == "OK" and any(p["component"] == "volume pgdata" for p in h["r750"]["problems"]),
+      "get_health carries the storage section and its problems")
 err, out, _ = s.tool("get_event_log", {"target": "dl380", "min_severity": "Critical"})
 check(not err and "Fan Failure" in json.dumps(out), "iLO IML via MCP")
 err, out, _ = s.tool("get_inventory", {"targets": ["x11", "sr650"]})

@@ -3,6 +3,7 @@ package mcpserver
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -86,7 +87,7 @@ func TestReadOnlyByDefault(t *testing.T) {
 			t.Errorf("%s registered without --allow", n)
 		}
 	}
-	for _, n := range []string{"list_targets", "get_inventory", "get_health", "get_sensors", "get_event_log", "get_power_state", "get_firmware_inventory", "get_boot_config", "list_tasks", "get_task"} {
+	for _, n := range []string{"list_targets", "get_inventory", "get_health", "get_sensors", "get_event_log", "get_power_state", "get_firmware_inventory", "get_boot_config", "list_tasks", "get_task", "get_storage"} {
 		tl, ok := ts[n]
 		if !ok {
 			t.Fatalf("missing %s", n)
@@ -292,5 +293,32 @@ func TestTwoIdenticalPlansSameSecond(t *testing.T) {
 	}
 	if dell.Count() != 2 {
 		t.Fatal("replay wrote to the BMC")
+	}
+}
+
+func TestStorageToolIsReadOnly(t *testing.T) {
+	// No --allow at all: storage is a read and must work anyway, write
+	// nothing to the BMC and nothing to the audit log.
+	cs, dell, audit := setup(t)
+	out, ok := call(t, cs, "get_storage", map[string]any{"targets": []string{"all"}})
+	if !ok {
+		t.Fatal(out)
+	}
+	s, _ := json.Marshal(out)
+	for _, w := range []string{`"name":"Physical Disk 0:1:2"`, `"raid_status":"Failed"`, `"name":"pgdata"`, `"failure_predicted":true`, `"life_left_percent":6`} {
+		if !strings.Contains(string(s), w) {
+			t.Errorf("missing %s in %s", w, s)
+		}
+	}
+	out, _ = call(t, cs, "get_health", map[string]any{"targets": []string{"db-01"}})
+	s, _ = json.Marshal(out)
+	if !strings.Contains(string(s), `"component":"drive Physical Disk 0:1:2"`) || !strings.Contains(string(s), `"storage":{`) {
+		t.Fatalf("get_health lacks storage: %s", s)
+	}
+	if dell.Count() != 0 {
+		t.Fatalf("storage wrote to the BMC: %+v", dell.Writes)
+	}
+	if b, err := os.ReadFile(audit); err == nil && len(b) > 0 {
+		t.Fatalf("storage reads were audited: %s", b)
 	}
 }

@@ -1,0 +1,7 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/AHCI.Embedded.2-1/Volumes",
+  "@odata.type": "#VolumeCollection.VolumeCollection",
+  "Members": [],
+  "Members@odata.count": 0,
+  "Name": "Volume Collection"
+}

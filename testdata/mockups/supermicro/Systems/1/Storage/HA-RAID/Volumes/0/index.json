@@ -1,0 +1,34 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/HA-RAID/Volumes/0",
+  "@odata.type": "#Volume.v1_9_0.Volume",
+  "CapacityBytes": 12000000000000,
+  "Id": "0",
+  "Links": {
+    "Drives": [
+      {
+        "@odata.id": "/redfish/v1/Chassis/1/Drives/HA-RAID.0.Disk.0"
+      },
+      {
+        "@odata.id": "/redfish/v1/Chassis/1/Drives/HA-RAID.0.Disk.1"
+      },
+      {
+        "@odata.id": "/redfish/v1/Chassis/1/Drives/HA-RAID.0.Disk.2"
+      },
+      {
+        "@odata.id": "/redfish/v1/Chassis/1/Drives/HA-RAID.0.Disk.3"
+      }
+    ]
+  },
+  "Name": "VD0",
+  "Operations": [
+    {
+      "OperationName": "Rebuild",
+      "PercentageComplete": 37
+    }
+  ],
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  },
+  "VolumeType": "StripedWithParity"
+}

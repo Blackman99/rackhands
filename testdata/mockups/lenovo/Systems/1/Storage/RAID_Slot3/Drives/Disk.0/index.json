@@ -1,0 +1,23 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Drives/Disk.0",
+  "@odata.type": "#Drive.v1_17_0.Drive",
+  "CapacityBytes": 480000000000,
+  "FailurePredicted": false,
+  "Id": "Disk.0",
+  "MediaType": "SSD",
+  "Model": "SSDSC2KG480G8L",
+  "Name": "Drive 0",
+  "PhysicalLocation": {
+    "PartLocation": {
+      "LocationOrdinalValue": 0,
+      "ServiceLabel": "Drive 0"
+    }
+  },
+  "PredictedMediaLifeLeftPercent": 88,
+  "Protocol": "SATA",
+  "SerialNumber": "PHYG1234016P480BGN",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

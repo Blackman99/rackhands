@@ -1,0 +1,26 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3",
+  "@odata.type": "#Storage.v1_13_0.Storage",
+  "Controllers": {
+    "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Controllers"
+  },
+  "Drives": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Drives/Disk.0"
+    },
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Drives/Disk.1"
+    }
+  ],
+  "Drives@odata.count": 2,
+  "Id": "RAID_Slot3",
+  "Name": "ThinkSystem RAID 940-8i 4GB Flash PCIe Gen4 12Gb Adapter",
+  "Status": {
+    "Health": "OK",
+    "HealthRollup": "OK",
+    "State": "Enabled"
+  },
+  "Volumes": {
+    "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Volumes"
+  }
+}

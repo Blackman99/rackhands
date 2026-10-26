@@ -248,6 +248,14 @@ func (r *Redfish) Health(ctx context.Context) (*HealthReport, error) {
 			}
 		}
 	}
+	if st, err := r.Storage(ctx); err == nil {
+		rep.Storage = st
+		for _, p := range st.Problems() {
+			add(p.Component, p.Health, p.Detail)
+		}
+	} else {
+		rep.Notes = append(rep.Notes, "storage not read: "+shortErr(err))
+	}
 	rep.Overall = Worst(levels...)
 	if rep.Overall == Unknown && len(rep.Problems) == 0 {
 		rep.Notes = append(rep.Notes, "BMC reported no health status")

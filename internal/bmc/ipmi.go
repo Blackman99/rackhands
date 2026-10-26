@@ -294,7 +294,8 @@ func (b *IPMI) Health(ctx context.Context) (*HealthReport, error) {
 		}
 	}
 	rep.Overall = Worst(levels...)
-	rep.Notes = append(rep.Notes, "IPMI health is derived from threshold sensors and chassis status")
+	rep.Notes = append(rep.Notes, "IPMI health is derived from threshold sensors and chassis status",
+		"storage not checked: IPMI has no controller, drive or RAID volume data (needs Redfish)")
 	return rep, nil
 }
 
@@ -491,4 +492,10 @@ func retryReservation[T any](ctx context.Context, f func() (T, error)) (T, error
 		}
 	}
 	return v, err
+}
+
+// Storage implements Backend. IPMI has no standard storage commands; a
+// chassis drive fault bit is all it knows, and health already reports it.
+func (b *IPMI) Storage(context.Context) (*StorageReport, error) {
+	return nil, fmt.Errorf("%w: storage health (controllers, drives, volumes) needs Redfish; IPMI has no storage or RAID data", ErrUnsupported)
 }

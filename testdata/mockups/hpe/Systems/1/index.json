@@ -111,13 +111,18 @@
         },
         "Storage": {
           "Status": {
-            "Health": "OK"
+            "Health": "Warning"
           }
         },
         "Temperatures": {
           "Status": {
             "Health": "OK"
           }
+        }
+      },
+      "Links": {
+        "SmartStorage": {
+          "@odata.id": "/redfish/v1/Systems/1/SmartStorage"
         }
       }
     }
@@ -138,5 +143,8 @@
     "Health": "Warning",
     "HealthRollup": "Warning",
     "State": "Enabled"
+  },
+  "Storage": {
+    "@odata.id": "/redfish/v1/Systems/1/Storage"
   }
 }

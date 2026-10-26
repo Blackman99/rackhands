@@ -1,0 +1,11 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Volumes",
+  "@odata.type": "#VolumeCollection.VolumeCollection",
+  "Members": [
+    {
+      "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Volumes/Volume0"
+    }
+  ],
+  "Members@odata.count": 1,
+  "Name": "Volume Collection"
+}

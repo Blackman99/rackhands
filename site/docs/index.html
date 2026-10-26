@@ -41,6 +41,7 @@
     <li><a href="#reads">Read commands</a></li>
     <li><a href="#danger">Dangerous operations</a></li>
     <li><a href="#tasks">Firmware tasks</a></li>
+    <li><a href="#storage">Storage health</a></li>
     <li><a href="#safety">The safety model</a></li>
     <li><a href="#mcp">MCP server</a></li>
     <li><a href="#vendors">Vendor notes</a></li>
@@ -105,8 +106,9 @@ audit_log: ~/.local/state/rackhands/audit.jsonl</pre>
 <tbody>
 <tr><td>rackhands targets</td><td>Configured BMCs, addresses, tags and the dangerous classes each one effectively has enabled right now.</td></tr>
 <tr><td>rackhands inventory [T…]</td><td>Vendor, model, serial, BIOS and BMC firmware, CPU and memory summary, power state, and the effective privilege of the account rackhands logs in with (see <a href="#readonly">read-only account</a>).</td></tr>
-<tr><td>rackhands health [T…]</td><td>Overall OK / Warning / Critical plus every component that is not OK. It uses vendor rollups where they exist (iDRAC subsystem rollups, iLO AggregateHealthStatus), and exits 1 if anything is unhealthy.</td></tr>
+<tr><td>rackhands health [T…]</td><td>Overall OK / Warning / Critical plus every component that is not OK. It uses vendor rollups where they exist (iDRAC subsystem rollups, iLO AggregateHealthStatus), adds failed, worn or failure-predicted drives and degraded volumes (see <a href="#storage">storage health</a>) and a one-line storage summary, and exits 1 if anything is unhealthy.</td></tr>
 <tr><td>rackhands power [T…]</td><td>Power state.</td></tr>
+<tr><td>rackhands storage [T…] [--problems]</td><td>RAID controllers (model, firmware), drives (media, size, health, media life left, location) and volumes (RAID level, size, member drives, state). <code>--problems</code> keeps only what is not OK. Exits 1 if a controller, drive or volume is not OK. Needs no <code>--allow</code>.</td></tr>
 <tr><td>rackhands sensors T [--kind K] [--problems]</td><td>Temperatures, fans, voltages, PSUs and power draw, with the critical threshold and health. K is one of <code>temperature</code>, <code>fan</code>, <code>voltage</code>, <code>psu</code>, <code>power</code>.</td></tr>
 <tr><td>rackhands events T [-n 30] [--min warning] [--all-logs]</td><td>Newest entries of the hardware event log, newest first, with normalised severity. <code>--all-logs</code> adds the Lifecycle and audit logs.</td></tr>
 <tr><td>rackhands firmware T</td><td>Installed firmware versions. Staged and previous copies are hidden.</td></tr>
@@ -168,6 +170,40 @@ JID_001  iDRAC job  Completed  100%  Firmware Update: iDRAC            Job compl
 </tbody></table>
 <p>After a watched update, the audit log gets a <code>task</code> entry with the final state, percent, message, how long rackhands watched and how long the BMC took. Watching an existing task with <code>rackhands task</code> or <code>get_task</code> is a read and is not audited.</p>
 
+<h2 id="storage">Storage health</h2>
+<p>A failed disk in a RAID5 set is the classic problem nobody sees until the second disk fails. <code>health</code> now reads the storage subsystem on every Redfish BMC and treats a failed drive or a degraded volume like a dead PSU: it is listed as a problem and makes the command exit 1. Each report ends with a storage line, so a healthy box shows that storage was actually checked.</p>
+<pre class="term"><span class="pr">$</span> rackhands health db-01
+CRITICAL  db-01  (Dell, via redfish)
+   Critical  subsystem power supplies  — iDRAC rollup
+   Critical  subsystem storage  — iDRAC rollup
+   Critical  psu PS2 Status  — reading 0 W
+   Critical  drive Physical Disk 0:1:2  — failed · HDD 2.4 TB ST2400MM0129 · Bay 2 · S/N WBN0K2L7 · on PERC H755 Front
+   Warning   volume pgdata  — degraded · RAID5 4.8 TB · on PERC H755 Front
+   storage   1 controller · 5 drives (1 Critical) · 2 volumes (1 Warning)
+<span class="pr">$</span> rackhands storage db-01
+CRITICAL  db-01  (Dell, via redfish, Storage)  1 controller · 5 drives (1 Critical) · 2 volumes (1 Warning)
+  CONTROLLER       FIRMWARE      HEALTH
+  PERC H755 Front  52.21.0-4606  OK
+  DRIVE                MEDIA    SIZE    HEALTH    LIFE LEFT  LOCATION  NOTE
+  Physical Disk 0:1:0  SAS SSD  960 GB  OK        97%        Bay 0
+  Physical Disk 0:1:1  SAS SSD  960 GB  OK        96%        Bay 1
+  Physical Disk 0:1:2  SAS HDD  2.4 TB  Critical  -          Bay 2     Failed
+  Physical Disk 0:1:3  SAS HDD  2.4 TB  OK        -          Bay 3
+  Physical Disk 0:1:4  SAS HDD  2.4 TB  OK        -          Bay 4
+  VOLUME  RAID   SIZE    HEALTH   DRIVES  STATE
+  os      RAID1  960 GB  OK       2       Online
+  pgdata  RAID5  4.8 TB  Warning  3       Degraded</pre>
+<p>A drive the BMC still calls OK becomes a Warning when it reports <code>FailurePredicted</code>, or less than 10% <code>PredictedMediaLifeLeftPercent</code>; the <code>NOTE</code> column then says <code>BMC says OK</code>, so you can see why rackhands disagrees. Rebuilds show their progress (<code>Rebuild 37%</code>). Columns that are empty on every row are left out. Sizes are decimal (TB, GB), as on the drive label.</p>
+<table class="ref">
+<thead><tr><th scope="col">Where it comes from</th><th scope="col">When</th></tr></thead>
+<tbody>
+<tr><td>DMTF <code>Storage</code></td><td>The normal case: <code>Systems/…/Storage</code> with its <code>Controllers</code> collection or inline <code>StorageControllers</code>, <code>Drives</code> and <code>Volumes</code>. Subsystems with no drives and no volumes (iDRAC's chipset AHCI, CPU-attached NVMe roots) are skipped when healthy.</td></tr>
+<tr><td>HPE <code>SmartStorage</code></td><td>iLO 4 and older iLO 5 firmware describe Smart Array controllers only in the OEM tree: <code>ArrayControllers</code>, <code>DiskDrives</code>, <code>LogicalDrives</code>. Capacities in MiB, SSD wear as <code>SSDEnduranceUtilizationPercentage</code> (used, so rackhands shows 100 minus it).</td></tr>
+<tr><td>DMTF <code>SimpleStorage</code></td><td>Only when nothing else is there. You get device health and size, but no volumes, wear or failure prediction, and a note says so.</td></tr>
+<tr><td>Nothing</td><td>The storage line says <code>not exposed by this BMC</code>. That does not fail <code>health</code>: rackhands reports what the BMC knows and does not guess.</td></tr>
+</tbody></table>
+<p>Storage is read-only, like every other read: it needs no <code>--allow</code>, sends only GETs and is not audited. Over IPMI there is no storage data at all (no standard command lists controllers, drives or RAID sets), so <code>rackhands storage</code> on an IPMI-only target exits 2 with <code>needs Redfish</code>, and <code>health</code> notes that storage was not checked.</p>
+
 <h2 id="safety">The safety model</h2>
 <ol>
 <li><strong>Off by default.</strong> Without <code>--allow</code> (or <code>RACKHANDS_ALLOW</code>), every dangerous command is refused with exit 3, and the MCP server does not list the tools at all.</li>
@@ -195,7 +231,7 @@ JID_001  iDRAC job  Completed  100%  Firmware Update: iDRAC            Job compl
 <thead><tr><th scope="col">Tool</th><th scope="col">Arguments</th></tr></thead>
 <tbody>
 <tr><td>list_targets</td><td>none</td></tr>
-<tr><td>get_inventory, get_health, get_power_state</td><td>targets: names, "all" or "tag:x"</td></tr>
+<tr><td>get_inventory, get_health, get_power_state, get_storage</td><td>targets: names, "all" or "tag:x"</td></tr>
 <tr><td>get_sensors</td><td>target, kind?, only_problems?</td></tr>
 <tr><td>get_event_log</td><td>target, limit?, min_severity?, all_logs?</td></tr>
 <tr><td>get_firmware_inventory, get_boot_config</td><td>target</td></tr>
@@ -207,6 +243,7 @@ JID_001  iDRAC job  Completed  100%  Firmware Update: iDRAC            Job compl
 <tr><td>update_firmware (firmware)</td><td>target, image_uri, confirm_token?, wait_seconds?</td></tr>
 <tr><td>virtual_media (virtual-media)</td><td>target, action, image?, confirm_token?</td></tr>
 </tbody></table>
+<p><code>get_health</code> carries a <code>storage</code> section next to <code>problems</code>; <code>get_storage</code> returns the full lists, with <code>source</code> saying whether they came from <code>Storage</code>, <code>SmartStorage</code> or <code>SimpleStorage</code>.</p>
 <p>Read tools are annotated <code>readOnlyHint</code>, and dangerous ones <code>destructiveHint</code>. A dangerous tool called without a token returns <code>{"status": "confirmation_required", "plan": …, "confirm_token": …, "next": …}</code>. Called again with the token, it returns <code>{"status": "done", "result": …}</code>. The server instructions tell the agent to show the plan and wait for a human yes. The token makes sure that what runs is exactly what was shown.</p>
 <p>A confirmed <code>update_firmware</code> answers with a <code>task_ref</code> and a <code>next</code> hint for <code>get_task</code>. With <code>wait_seconds</code> it also watches the task and returns <code>{"task": {"verdict", "task", "elapsed_s", …}}</code>. <code>wait_seconds</code> is not part of the confirmed request, so it does not change the token. While a watch runs, the server sends MCP progress notifications (state, percent, message) when the client asked for them.</p>
 
@@ -214,22 +251,22 @@ JID_001  iDRAC job  Completed  100%  Firmware Update: iDRAC            Job compl
 <table class="ref">
 <thead><tr><th scope="col">Vendor</th><th scope="col">What rackhands does differently</th></tr></thead>
 <tbody>
-<tr><td>Dell iDRAC 8/9</td><td>Reads the hardware log from <code>Sel</code>, with the Lifecycle log only under <code>--all-logs</code>. Adds the <code>DellSystem</code> subsystem rollups to health. Hides <code>Previous-</code> and <code>Available-</code> firmware copies. Follows firmware updates through the iDRAC job (<code>JobState</code>), and reports a job scheduled for the next reboot as staged.</td></tr>
-<tr><td>HPE iLO 4/5/6</td><td>Uses <code>AggregateHealthStatus</code> from <code>Oem.Hpe</code> (or <code>Oem.Hp</code> on iLO 4) for health. Maps IML <code>Oem.Hpe.Severity</code> (Caution becomes Warning). Fetches log entries that are not inlined. Sends <code>Manager.Reset</code> without a ResetType. Uses the OEM virtual media actions. Ignores thresholds reported as 0. Follows iLO 5 firmware flashes through <code>Oem.Hpe.State</code> on UpdateService.</td></tr>
-<tr><td>Lenovo XCC/XCC2</td><td>Reads <code>PlatformLog</code>. Uses the <code>Sensors</code> collection when there is no Thermal/Power. Sends an If-Match ETag on every PATCH; XCC rejects a PATCH without one. Follows firmware updates through the task monitor.</td></tr>
-<tr><td>Supermicro X11+</td><td>Reads <code>Log1</code> on the manager. On X11 boards whose virtual media is OEM-only, virtual media is reported as unsupported up front instead of failing halfway.</td></tr>
-<tr><td>Generic DMTF</td><td>Uses the standard schema only: Thermal/Power or Sensors, LogServices with LogEntryType SEL, SimpleUpdate, InsertMedia, TaskService.</td></tr>
+<tr><td>Dell iDRAC 8/9</td><td>Reads the hardware log from <code>Sel</code>, with the Lifecycle log only under <code>--all-logs</code>. Adds the <code>DellSystem</code> subsystem rollups to health. Hides <code>Previous-</code> and <code>Available-</code> firmware copies. Follows firmware updates through the iDRAC job (<code>JobState</code>), and reports a job scheduled for the next reboot as staged. Reads PERC storage under <code>RAID.SL.*</code> / <code>RAID.Integrated.*</code>, with <code>DellPhysicalDisk</code> / <code>DellVolume</code> <code>RaidStatus</code> (Failed, Degraded, Rebuilding).</td></tr>
+<tr><td>HPE iLO 4/5/6</td><td>Uses <code>AggregateHealthStatus</code> from <code>Oem.Hpe</code> (or <code>Oem.Hp</code> on iLO 4) for health. Maps IML <code>Oem.Hpe.Severity</code> (Caution becomes Warning). Fetches log entries that are not inlined. Sends <code>Manager.Reset</code> without a ResetType. Uses the OEM virtual media actions. Ignores thresholds reported as 0. Follows iLO 5 firmware flashes through <code>Oem.Hpe.State</code> on UpdateService. Falls back to the Smart Array <code>SmartStorage</code> OEM tree when there is no DMTF Storage (iLO 4).</td></tr>
+<tr><td>Lenovo XCC/XCC2</td><td>Reads <code>PlatformLog</code>. Uses the <code>Sensors</code> collection when there is no Thermal/Power. Sends an If-Match ETag on every PATCH; XCC rejects a PATCH without one. Follows firmware updates through the task monitor. Reads RAID adapters from the Storage <code>Controllers</code> collection.</td></tr>
+<tr><td>Supermicro X11+</td><td>Reads <code>Log1</code> on the manager. On X11 boards whose virtual media is OEM-only, virtual media is reported as unsupported up front instead of failing halfway. Follows drive links into <code>/Chassis</code>, maps a volume that only has <code>VolumeType</code> to a RAID level, and shows rebuild progress from <code>Operations</code>.</td></tr>
+<tr><td>Generic DMTF</td><td>Uses the standard schema only: Thermal/Power or Sensors, LogServices with LogEntryType SEL, SimpleUpdate, InsertMedia, TaskService, Storage (or SimpleStorage when that is all there is).</td></tr>
 </tbody></table>
 <p>Units are normalised (<code>Cel</code> to C, <code>Percent</code> to %), severities map to OK / Warning / Critical, and event times are UTC.</p>
 
 <h2 id="ipmi">IPMI and fallback</h2>
 <p>With both <code>redfish</code> and <code>ipmi</code> set, rackhands tries Redfish first. It falls back to IPMI when the service is unreachable, does not support the operation, or answers 404, 501 or 503. It does <strong>not</strong> fall back on 401 or 403: a wrong password should be fixed, not hidden by trying another protocol. Results say <code>via: "ipmi (fallback)"</code>, and JSON adds <code>fallback_reason</code>.</p>
-<p>Over IPMI you get FRU inventory, threshold sensors with health from the threshold status, SEL, chassis status faults, power state and control, boot device and BMC cold reset. Firmware update and virtual media are Redfish-only. Over IPMI, firmware shows only the BMC revision, and boot order is not available. SDR and SEL walks retry automatically when another client cancels the reservation.</p>
+<p>Over IPMI you get FRU inventory, threshold sensors with health from the threshold status, SEL, chassis status faults, power state and control, boot device and BMC cold reset. Firmware update, virtual media and storage health are Redfish-only. Over IPMI, firmware shows only the BMC revision, and boot order is not available. SDR and SEL walks retry automatically when another client cancels the reservation.</p>
 
 <h2 id="output">Output and exit codes</h2>
 <p><code>--json</code> prints a list of <code>{"target", "via", "fallback_reason"?, "data"?, "error"?}</code> for fleet reads, and <code>{"target", "via", "data"}</code> for single-target reads. One unreachable BMC does not hide the others: its entry carries an <code>error</code>.</p>
 <table class="ref"><thead><tr><th scope="col">Code</th><th scope="col">Meaning</th></tr></thead><tbody>
-<tr><td>0</td><td>OK</td></tr><tr><td>1</td><td><code>health</code> found something that is not OK</td></tr><tr><td>2</td><td>An error occurred (including any BMC in a fleet read failing)</td></tr><tr><td>3</td><td>Refused, unsupported, or not confirmed; nothing was sent</td></tr><tr><td>4</td><td>A watched task did not complete: failed, cancelled, needs a human, vanished, or still running at the deadline</td></tr><tr><td>130</td><td>You stopped watching with Ctrl-C (the task keeps running)</td></tr></tbody></table>
+<tr><td>0</td><td>OK</td></tr><tr><td>1</td><td><code>health</code> or <code>storage</code> found something that is not OK</td></tr><tr><td>2</td><td>An error occurred (including any BMC in a fleet read failing)</td></tr><tr><td>3</td><td>Refused, unsupported, or not confirmed; nothing was sent</td></tr><tr><td>4</td><td>A watched task did not complete: failed, cancelled, needs a human, vanished, or still running at the deadline</td></tr><tr><td>130</td><td>You stopped watching with Ctrl-C (the task keeps running)</td></tr></tbody></table>
 
 <h2 id="audit">Audit log</h2>
 <p>The audit log is at <code>~/.local/state/rackhands/audit.jsonl</code> by default. Override it with <code>--audit-log FILE</code>, <code>RACKHANDS_AUDIT_LOG</code> or <code>audit_log:</code>, or turn it off with <code>--audit-log off</code>. One JSON object per line:</p>
@@ -239,7 +276,7 @@ JID_001  iDRAC job  Completed  100%  Firmware Update: iDRAC            Job compl
 <p>Phases: <code>refused</code>, <code>planned</code>, <code>token-rejected</code>, <code>executed</code>, <code>failed</code>, and <code>task</code> (the outcome of a watched firmware update).</p>
 
 <h2 id="testing">How it is tested</h2>
-<p>Unit tests replay vendor mockups (Dell R750, HPE DL380 Gen10, Lenovo SR650 V2, Supermicro X11) through an in-process Redfish server that records every write. Task resources in the mockups carry the states a running task goes through, so a firmware update can be followed from 0% to the end, including a BMC that drops off the network mid-flash. CI then runs the real binary (<a href="https://github.com/Blackman99/rackhands/blob/main/test/integration.sh">test/integration.sh</a>) against the DMTF Redfish-Mockup-Server, which serves DMTF's public-rackmount1 mockup and the four vendor mockups, and against OpenIPMI <code>ipmi_sim</code> over a real RMCP+ session. The MCP server is exercised over stdio through the full plan, token and done sequence.</p>
+<p>Unit tests replay vendor mockups (Dell R750, HPE DL380 Gen10 on iLO 5 and DL360 Gen9 on iLO 4, Lenovo SR650 V2, Supermicro X11), each with its storage quirks and a failed, worn or degraded drive or volume except the healthy Lenovo, through an in-process Redfish server that records every write. Task resources in the mockups carry the states a running task goes through, so a firmware update can be followed from 0% to the end, including a BMC that drops off the network mid-flash. CI then runs the real binary (<a href="https://github.com/Blackman99/rackhands/blob/main/test/integration.sh">test/integration.sh</a>) against the DMTF Redfish-Mockup-Server, which serves DMTF's public-rackmount1 mockup and the five vendor mockups, and against OpenIPMI <code>ipmi_sim</code> over a real RMCP+ session. The MCP server is exercised over stdio through the full plan, token and done sequence.</p>
 
 <h2 id="faq">FAQ</h2>
 <p><strong>Why not just give the agent <code>ipmitool</code> or <code>curl</code>?</strong> Because nothing stands between "check the fans" and <code>chassis power off</code>. rackhands gives the agent the reads and nothing else unless you open a class, and even then a human approves each request.</p>

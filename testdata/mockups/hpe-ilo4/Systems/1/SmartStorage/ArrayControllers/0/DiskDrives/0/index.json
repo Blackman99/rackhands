@@ -1,0 +1,26 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/0",
+  "@odata.type": "#HpSmartStorageDiskDrive.1.1.0.HpSmartStorageDiskDrive",
+  "CapacityMiB": 457862,
+  "DiskDriveStatusReasons": [
+    "OK"
+  ],
+  "FirmwareVersion": {
+    "Current": {
+      "VersionString": "HPD3"
+    }
+  },
+  "Id": "0",
+  "InterfaceType": "SAS",
+  "Location": "1I:1:1",
+  "LocationFormat": "ControllerPort:Box:Bay",
+  "MediaType": "SSD",
+  "Model": "MK000480GWCEV",
+  "Name": "HpSmartStorageDiskDrive",
+  "SSDEnduranceUtilizationPercentage": 3,
+  "SerialNumber": "SNWCEV0",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/LogicalDrives/1",
+  "@odata.type": "#HpSmartStorageLogicalDrive.1.1.0.HpSmartStorageLogicalDrive",
+  "CapacityMiB": 457830,
+  "Id": "1",
+  "Links": {
+    "DataDrives": {
+      "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/LogicalDrives/1/DataDrives"
+    }
+  },
+  "LogicalDriveName": "os",
+  "LogicalDriveNumber": 1,
+  "LogicalDriveStatusReasons": [
+    "OK"
+  ],
+  "Name": "HpSmartStorageLogicalDrive",
+  "Raid": "1",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

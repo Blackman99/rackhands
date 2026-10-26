@@ -236,3 +236,49 @@ func TestTaskWaitTimeout(t *testing.T) {
 		t.Fatalf("exit %d after %v", code, time.Since(start))
 	}
 }
+
+func TestStorageCommandIsARead(t *testing.T) {
+	c, dell := cfg(t)
+	audit := os.Getenv("RACKHANDS_AUDIT_LOG")
+	// No --allow, no --yes: a degraded box exits 1, a healthy one 0.
+	code, out, e := rh("--config", c, "storage", "db-01")
+	if code != 1 || !strings.Contains(out, "CRITICAL  db-01  (Dell, via redfish, Storage)") ||
+		!strings.Contains(out, "Physical Disk 0:1:2") || !strings.Contains(out, "pgdata") || !strings.Contains(out, "Degraded") {
+		t.Fatalf("storage exit %d:\n%s%s", code, out, e)
+	}
+	for _, l := range strings.Split(out, "\n") {
+		if strings.HasSuffix(l, " ") {
+			t.Errorf("trailing space in %q", l)
+		}
+	}
+	if code, out, _ := rh("--config", c, "storage", "k8s-12"); code != 0 || !strings.Contains(out, "RAID 940-8i") {
+		t.Fatalf("healthy storage exit %d:\n%s", code, out)
+	}
+	code, out, _ = rh("--config", c, "storage", "--problems", "all")
+	if code != 1 || strings.Contains(out, "Physical Disk 0:1:0") || !strings.Contains(out, "Physical Disk 0:1:2") ||
+		!strings.Contains(out, "nothing to report") {
+		t.Fatalf("--problems exit %d:\n%s", code, out)
+	}
+	code, out, _ = rh("--config", c, "--json", "storage", "db-01")
+	if code != 1 || !strings.Contains(out, `"source": "Storage"`) || !strings.Contains(out, `"raid_type": "RAID5"`) {
+		t.Fatalf("json exit %d:\n%s", code, out)
+	}
+	code, out, _ = rh("--config", c, "health", "db-01")
+	if code != 1 || !strings.Contains(out, "drive Physical Disk 0:1:2") ||
+		!strings.Contains(out, "storage   1 controller · 5 drives (1 Critical) · 2 volumes (1 Warning)") {
+		t.Fatalf("health storage section exit %d:\n%s", code, out)
+	}
+	if dell.Count() != 0 {
+		t.Fatalf("storage wrote to the BMC: %+v", dell.Writes)
+	}
+	if b, err := os.ReadFile(audit); err == nil && len(b) > 0 {
+		t.Fatalf("storage reads were audited: %s", b)
+	}
+}
+
+func TestStorageOverIPMISaysNeedsRedfish(t *testing.T) {
+	code, out, _ := rh("--ipmi", "127.0.0.1:9", "--timeout", "1s", "storage")
+	if code != 2 || !strings.Contains(out, "needs Redfish") {
+		t.Fatalf("exit %d: %s", code, out)
+	}
+}

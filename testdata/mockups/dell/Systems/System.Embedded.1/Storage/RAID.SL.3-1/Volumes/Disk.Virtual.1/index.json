@@ -1,0 +1,34 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Volumes/Disk.Virtual.1",
+  "@odata.type": "#Volume.v1_9_0.Volume",
+  "CapacityBytes": 4800000000000,
+  "Encrypted": false,
+  "Id": "Disk.Virtual.1:RAID.SL.3-1",
+  "Links": {
+    "Drives": [
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.2"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.3"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.4"
+      }
+    ]
+  },
+  "Name": "pgdata",
+  "Oem": {
+    "Dell": {
+      "DellVolume": {
+        "RaidStatus": "Degraded"
+      }
+    }
+  },
+  "RAIDType": "RAID5",
+  "Status": {
+    "Health": "Warning",
+    "State": "Enabled"
+  },
+  "VolumeType": "StripedWithParity"
+}

@@ -1,0 +1,23 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Volumes/Volume0",
+  "@odata.type": "#Volume.v1_9_0.Volume",
+  "CapacityBytes": 479000000000,
+  "Id": "Volume0",
+  "Links": {
+    "Drives": [
+      {
+        "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Drives/Disk.0"
+      },
+      {
+        "@odata.id": "/redfish/v1/Systems/1/Storage/RAID_Slot3/Drives/Disk.1"
+      }
+    ]
+  },
+  "Name": "boot",
+  "RAIDType": "RAID1",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  },
+  "VolumeType": "Mirrored"
+}

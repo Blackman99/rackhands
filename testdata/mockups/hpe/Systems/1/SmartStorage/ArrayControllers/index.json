@@ -1,0 +1,7 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers",
+  "@odata.type": "#HpeSmartStorageArrayControllerCollection.HpeSmartStorageArrayControllerCollection",
+  "Members": [],
+  "Members@odata.count": 0,
+  "Name": "HpeSmartStorageArrayControllers"
+}

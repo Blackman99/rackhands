@@ -1,0 +1,25 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/SmartStorage/ArrayControllers/0/DiskDrives/3",
+  "@odata.type": "#HpSmartStorageDiskDrive.1.1.0.HpSmartStorageDiskDrive",
+  "CapacityMiB": 1144641,
+  "DiskDriveStatusReasons": [
+    "Failed"
+  ],
+  "FirmwareVersion": {
+    "Current": {
+      "VersionString": "HPD3"
+    }
+  },
+  "Id": "3",
+  "InterfaceType": "SAS",
+  "Location": "1I:1:4",
+  "LocationFormat": "ControllerPort:Box:Bay",
+  "MediaType": "HDD",
+  "Model": "EG001200JWJNQ",
+  "Name": "HpSmartStorageDiskDrive",
+  "SerialNumber": "SNWJNQ3",
+  "Status": {
+    "Health": "Critical",
+    "State": "Enabled"
+  }
+}

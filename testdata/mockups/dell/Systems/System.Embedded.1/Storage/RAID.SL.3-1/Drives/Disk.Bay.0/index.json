@@ -1,0 +1,30 @@
+{
+  "@odata.id": "/redfish/v1/Systems/System.Embedded.1/Storage/RAID.SL.3-1/Drives/Disk.Bay.0",
+  "@odata.type": "#Drive.v1_17_0.Drive",
+  "CapacityBytes": 960000000000,
+  "FailurePredicted": false,
+  "Id": "Disk.Bay.0:Enclosure.Internal.0-1:RAID.SL.3-1",
+  "MediaType": "SSD",
+  "Model": "MZ7L3960HCJR0D3",
+  "Name": "Physical Disk 0:1:0",
+  "Oem": {
+    "Dell": {
+      "DellPhysicalDisk": {
+        "RaidStatus": "Online"
+      }
+    }
+  },
+  "PhysicalLocation": {
+    "PartLocation": {
+      "LocationOrdinalValue": 0,
+      "LocationType": "Bay"
+    }
+  },
+  "PredictedMediaLifeLeftPercent": 97,
+  "Protocol": "SAS",
+  "SerialNumber": "S6KMNA0T401177",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}

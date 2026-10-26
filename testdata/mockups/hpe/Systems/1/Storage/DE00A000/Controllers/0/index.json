@@ -1,0 +1,13 @@
+{
+  "@odata.id": "/redfish/v1/Systems/1/Storage/DE00A000/Controllers/0",
+  "@odata.type": "#StorageController.v1_7_0.StorageController",
+  "FirmwareVersion": "52.24.3-4948",
+  "Id": "0",
+  "Model": "HPE MR416i-a Gen10+",
+  "Name": "HPE MR416i-a Gen10+",
+  "SerialNumber": "SKC4012345",
+  "Status": {
+    "Health": "OK",
+    "State": "Enabled"
+  }
+}
